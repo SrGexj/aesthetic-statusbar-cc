@@ -3,6 +3,8 @@
 
 import argparse
 import json
+import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -15,6 +17,10 @@ from aesthetic_statusbar.config import (
 )
 from aesthetic_statusbar.colors import PALETTES
 from aesthetic_statusbar.pets import PET_COLLECTIONS
+
+SETTINGS_FILE = Path.home() / ".claude" / "settings.json"
+
+STATUSBAR_COMMAND = "aesthetic-statusbar-run"
 
 
 def cmd_init(args):
@@ -88,6 +94,122 @@ def cmd_list(args):
             print(f"  - {key}")
 
 
+def cmd_setup(args):
+    action = args.setup_action
+
+    if action == "install":
+        cmd_setup_install()
+    elif action == "uninstall":
+        cmd_setup_uninstall()
+    elif action == "update":
+        cmd_setup_update()
+
+
+def cmd_setup_install():
+    init_config()
+
+    cmd = STATUSBAR_COMMAND
+    try:
+        result = shutil.which(cmd)
+    except Exception:
+        result = None
+
+    if not result:
+        print(f"Warning: '{cmd}' not found in PATH. Make sure the package is installed via pipx/pip.")
+
+    if SETTINGS_FILE.exists():
+        try:
+            with open(SETTINGS_FILE) as f:
+                s = json.load(f)
+            current = s.get("statusLine", {}).get("command", "")
+            if current == cmd:
+                print(f"settings.json already configured with '{cmd}'")
+                return
+            if current:
+                print(f"Replacing existing statusLine command: {current}")
+            s["statusLine"] = {"type": "command", "command": cmd}
+            with open(SETTINGS_FILE, "w") as f:
+                json.dump(s, f, indent=2, ensure_ascii=False)
+            print(f"settings.json updated — statusLine set to '{cmd}'")
+        except Exception as e:
+            print(f"Error updating settings.json: {e}")
+    else:
+        print(f"settings.json not found at {SETTINGS_FILE}")
+        print(f"Add this manually:")
+        print(f'  "statusLine": {{"type": "command", "command": "{cmd}"}}')
+
+    print("\nRestart Claude Code to see the status bar.")
+
+
+def cmd_setup_uninstall():
+    if SETTINGS_FILE.exists():
+        try:
+            with open(SETTINGS_FILE) as f:
+                s = json.load(f)
+            if "statusLine" in s:
+                old = s.pop("statusLine")
+                with open(SETTINGS_FILE, "w") as f:
+                    json.dump(s, f, indent=2, ensure_ascii=False)
+                print(f"Removed statusLine from settings.json (was: {old})")
+            else:
+                print("No statusLine found in settings.json")
+        except Exception as e:
+            print(f"Error updating settings.json: {e}")
+
+    if CONFIG_FILE.exists():
+        CONFIG_FILE.unlink()
+        print(f"Removed config at {CONFIG_FILE}")
+    else:
+        print("No config file to remove")
+
+    print("\nRestart Claude Code to apply changes.")
+
+
+def cmd_setup_update():
+    import subprocess
+
+    curl_dir = Path.home() / ".claude" / "aesthetic-statusbar"
+
+    if curl_dir.exists() and (curl_dir / "run.py").exists():
+        print("Detected curl install at", curl_dir)
+        print("Re-running curl installer...")
+        try:
+            subprocess.run(
+                ["bash", "-c", "curl -fsSL https://raw.githubusercontent.com/SrGexj/aesthetic-statusbar-cc/main/install.sh | bash"],
+                check=True,
+            )
+        except Exception as e:
+            print(f"Update failed: {e}")
+        return
+
+    try:
+        result = shutil.which("pipx")
+    except Exception:
+        result = None
+
+    if result:
+        print("Detected pipx install, updating...")
+        try:
+            subprocess.run(
+                ["pipx", "upgrade", "aesthetic-statusbar"],
+                check=True,
+            )
+            print("Updated via pipx!")
+        except subprocess.CalledProcessError:
+            print("pipx upgrade failed, trying reinstall...")
+            subprocess.run(
+                ["pipx", "install", "--force", "git+https://github.com/SrGexj/aesthetic-statusbar-cc.git"],
+                check=True,
+            )
+            print("Reinstalled via pipx!")
+        return
+
+    print("Could not detect install method. Update manually:")
+    print("  pipx:  pipx upgrade aesthetic-statusbar")
+    print("  curl:  curl -fsSL https://raw.githubusercontent.com/SrGexj/aesthetic-statusbar-cc/main/install.sh | bash")
+    print("  pip:   pip install --upgrade git+https://github.com/SrGexj/aesthetic-statusbar-cc.git")
+
+
 def cmd_run(args):
     from aesthetic_statusbar.renderer import render
     print(render())
@@ -125,6 +247,14 @@ def main():
 
     p_run = sub.add_parser("run", help="Run the statusbar renderer (for testing)")
     p_run.set_defaults(func=cmd_run)
+
+    p_setup = sub.add_parser("setup", help="Install, update, or uninstall")
+    p_setup.add_argument(
+        "setup_action",
+        choices=["install", "uninstall", "update"],
+        help="Action to perform",
+    )
+    p_setup.set_defaults(func=cmd_setup)
 
     args = parser.parse_args()
     if not hasattr(args, "func"):

@@ -10,11 +10,17 @@ def format_reset(resets_at) -> str:
         now = datetime.now(timezone.utc)
         end = datetime.fromtimestamp(resets_at, tz=timezone.utc)
         secs = max(0, int((end - now).total_seconds()))
-        h, rem = divmod(secs, 3600)
-        m = rem // 60
-        if h > 0:
+        
+        d = secs // 86400
+        h = (secs % 86400) // 3600
+        m = (secs % 3600) // 60
+        
+        if d > 0:
+            return f"{d}d{h:02d}h"
+        elif h > 0:
             return f"{h}h{m:02d}m"
-        return f"{m}m"
+        else:
+            return f"{m}m"
     except Exception:
         return ""
 
