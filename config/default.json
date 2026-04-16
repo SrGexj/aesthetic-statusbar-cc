@@ -1,0 +1,17 @@
+{
+  "palette": "default",
+  "pet": "blob",
+  "bar_width": 14,
+  "separator": " │ ",
+  "show": {
+    "pet": true,
+    "5h_bar": true,
+    "7d_bar": true,
+    "git": true,
+    "model": true,
+    "effort": true,
+    "reset_timer": true,
+    "context": true
+  },
+  "order": ["pet", "5h_bar", "7d_bar", "git", "model", "effort"]
+}

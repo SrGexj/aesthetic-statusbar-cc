@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "aesthetic-statusbar"
+version = "1.0.0"
+description = "Aesthetic StatusBar for Claude Code — colorful progress bars, animated pets, and configurable status segments"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.8"
+authors = [{ name = "Juano" }]
+keywords = ["claude-code", "statusbar", "terminal", "ansi"]
+classifiers = [
+    "Environment :: Console",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Terminals",
+]
+
+[project.scripts]
+aesthetic-statusbar = "aesthetic_statusbar.cli:main"
+aesthetic-statusbar-run = "aesthetic_statusbar.renderer:main"
+
+[project.urls]
+Homepage = "https://github.com/SrGexj/aesthetic-statusbar-cc"
+Repository = "https://github.com/SrGexj/aesthetic-statusbar-cc"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/aesthetic_statusbar"]
