@@ -2,7 +2,8 @@
 
 A customizable, colorful status bar for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) that displays rate limit progress bars, git info, model name, effort level, and an animated pet companion — all in your terminal.
 
-![preview](https://via.placeholder.com/800x40?text= StatusBar+Preview)
+<img width="1060" height="53" alt="image" src="https://github.com/user-attachments/assets/f65b29f3-642c-40f8-a4d5-bd2704b4cbd2" />
+
 
 ## Features
 
