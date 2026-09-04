@@ -7,7 +7,7 @@ import sys
 import time
 from pathlib import Path
 
-from .formatters import fmt_tokens
+from .formatters import fmt_tokens, pick_cache_cause
 
 CACHE_FILE = Path.home() / ".cache" / "aesthetic-statusbar" / "last_stdin.json"
 
@@ -134,6 +134,6 @@ def get_cache_data(stdin_data: dict) -> dict:
         "expires_at": expires_at,
         "hit_ratio": pc.get("hit_ratio"),
         "misses": pc.get("misses", 0),
-        "last_cause": causes[0] if causes else None,
+        "last_cause": pick_cache_cause(causes) or None,
         "miss_causes": pc.get("miss_causes") or {},
     }

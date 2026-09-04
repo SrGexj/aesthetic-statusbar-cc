@@ -177,12 +177,23 @@ aesthetic-statusbar list modules     # pet, 5h_bar, 7d_bar, git, model, effort, 
 The `cache` module reads Claude Code's `prompt_cache` field, so you can see when the prompt cache is being invalidated and why.
 
 ```
-⚡ 95% 44m          warm — 95% hit ratio, goes cold in 44 minutes
-⚡ 44% 44m ✗2 ttl 1h warm, but 2 misses this session, the last one from the TTL expiring
-⚡ cold: tools       cold right now because the tool definitions changed
+⚡ 95% 44m            warm — 95% hit ratio, goes cold in 44 minutes
+⚡ 44% 44m ✗2 ttl 1h   warm, but 2 misses this session, the last from the TTL expiring
+⚡ cold: tools         cold right now because the tool definitions changed
+⚡ cold: ⚠ server      cold, and the client could not pin down a local cause
 ```
 
-Causes come from Claude Code's own heuristic: `system` (system prompt changed), `tools`, `model`, `messages` (history rewritten), `ttl 5m` / `ttl 1h` (idle past the TTL), `server`, `unknown`.
+Causes come from Claude Code's own heuristic: `system` (system prompt changed),
+`tools`, `model`, `messages` (history rewritten), `ttl 5m` / `ttl 1h` (idle past
+the TTL), and the two it cannot attribute locally — `⚠ server` and `⚠ unknown`,
+marked so you can tell "nothing you did" apart from an actionable cause at a
+glance.
+
+A single miss can carry several causes. Structural ones win: `system` > `tools` >
+`model` > `messages` > `ttl` > `⚠ server` > `⚠ unknown`. If the tool definitions
+changed *and* the TTL expired in the same request, the bar says `tools` — the
+change to what the agent runs with is the part worth acting on, and the idle time
+is incidental.
 
 ### Update notifications
 
@@ -201,6 +212,15 @@ Then update with:
 aesthetic-statusbar setup update
 # or, for a curl install:
 curl -fsSL https://raw.githubusercontent.com/SrGexj/aesthetic-statusbar-cc/main/update.sh | bash
+```
+
+## Tests
+
+The cause-precedence and rendering logic is covered by the standard library's
+`unittest`, so there is nothing to install:
+
+```bash
+python3 -m unittest discover -s tests
 ```
 
 ## How it works

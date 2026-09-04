@@ -22,8 +22,8 @@ def render_cache(cache: dict, pal: dict) -> str:
     """Prompt-cache health: hit ratio, time to cold, and why it last missed."""
     if not cache["warm"]:
         cause = cache["last_cause"]
-        label = cache_cause_label(cause) if cause else "cold"
-        return f"{pal['red_light']}\u26a1 cold: {label}{RESET}"
+        reason = f": {cache_cause_label(cause)}" if cause else ""
+        return f"{pal['red_light']}\u26a1 cold{reason}{RESET}"
 
     ratio = cache["hit_ratio"]
     if ratio is None:
@@ -37,8 +37,7 @@ def render_cache(cache: dict, pal: dict) -> str:
         head += f" {pal['white_dim']}{ttl_left}{RESET}"
 
     if cache["misses"]:
-        cause = cache["last_cause"]
-        label = cache_cause_label(cause) if cause else "unknown"
+        label = cache_cause_label(cache["last_cause"] or "unknown")
         head += f" {DIM}\u2717{cache['misses']} {label}{RESET}"
 
     return head
