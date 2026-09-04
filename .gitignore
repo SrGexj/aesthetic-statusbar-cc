@@ -8,4 +8,6 @@ __pycache__/
 .venv/
 venv/
 *.egg
-.mypy_cache/.DS_Store
+.mypy_cache/
+.DS_Store
+
