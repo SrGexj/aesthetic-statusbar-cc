@@ -49,6 +49,10 @@ main()
 PYEOF
 chmod +x "${INSTALL_DIR}/run.py"
 
+curl -fsSL "${REPO_RAW}/update.sh" -o "${INSTALL_DIR}/update.sh"
+chmod +x "${INSTALL_DIR}/update.sh"
+ok "Downloaded update script"
+
 if [ ! -f "${HOME}/.config/aesthetic-statusbar/config.json" ]; then
     curl -fsSL "${REPO_RAW}/config/default.json" -o "${HOME}/.config/aesthetic-statusbar/config.json"
     ok "Default config created"
@@ -94,6 +98,9 @@ fi
 
 echo ""
 ok "Aesthetic StatusBar installed!"
+echo ""
+echo "  Update:     python3 ~/.claude/aesthetic-statusbar/update.sh"
+echo "              (or: curl -fsSL https://raw.githubusercontent.com/SrGexj/aesthetic-statusbar-cc/main/update.sh | bash)"
 echo ""
 echo "  Configure:  aesthetic-statusbar init    (if installed via pipx)"
 echo "              aesthetic-statusbar set --palette dracula --pet cat"

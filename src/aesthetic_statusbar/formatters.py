@@ -32,3 +32,18 @@ def fmt_tokens(n: int) -> str:
         v = n / 1000
         return f"{v:.0f}k" if v == int(v) else f"{v:.1f}k"
     return str(n)
+
+CACHE_CAUSE_LABELS = {
+    "system_prompt_changed": "system",
+    "tools_changed": "tools",
+    "model_changed": "model",
+    "messages_rewritten": "messages",
+    "ttl_expired_5m": "ttl 5m",
+    "ttl_expired_1h": "ttl 1h",
+    "likely_server_side": "server",
+    "unknown": "unknown",
+}
+
+
+def cache_cause_label(cause: str) -> str:
+    return CACHE_CAUSE_LABELS.get(cause, cause.replace("_", " "))

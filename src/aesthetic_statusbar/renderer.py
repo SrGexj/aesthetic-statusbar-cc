@@ -3,7 +3,7 @@
 from .colors import RESET, DIM, get_palette, color_for_pct, effort_color
 from .pets import get_pet_frame
 from .bars import progress_bar
-from .formatters import format_reset, fmt_tokens
+from .formatters import format_reset, fmt_tokens, cache_cause_label
 from .data import (
     read_stdin,
     get_rate_data,
@@ -12,8 +12,35 @@ from .data import (
     get_context_suffix,
     get_effort,
     get_git_info,
+    get_cache_data,
 )
 from .config import load_config
+
+
+def render_cache(cache: dict, pal: dict) -> str:
+    """Prompt-cache health: hit ratio, time to cold, and why it last missed."""
+    if not cache["warm"]:
+        cause = cache["last_cause"]
+        label = cache_cause_label(cause) if cause else "cold"
+        return f"{pal['red_light']}\u26a1 cold: {label}{RESET}"
+
+    ratio = cache["hit_ratio"]
+    if ratio is None:
+        head = f"{pal['cyan']}\u26a1 warm{RESET}"
+    else:
+        pct = ratio * 100
+        head = f"{color_for_pct(100 - pct, pal)}\u26a1 {pct:.0f}%{RESET}"
+
+    ttl_left = format_reset(cache["expires_at"])
+    if ttl_left:
+        head += f" {pal['white_dim']}{ttl_left}{RESET}"
+
+    if cache["misses"]:
+        cause = cache["last_cause"]
+        label = cache_cause_label(cause) if cause else "unknown"
+        head += f" {DIM}\u2717{cache['misses']} {label}{RESET}"
+
+    return head
 
 
 def render() -> str:
@@ -28,6 +55,7 @@ def render() -> str:
     ctx_suffix = get_context_suffix(stdin_data) if cfg["show"].get("context", True) else ""
     effort = get_effort(settings) if cfg["show"].get("effort", True) else ""
     rate = get_rate_data(stdin_data) if (cfg["show"].get("5h_bar", True) or cfg["show"].get("7d_bar", True)) else {}
+    cache = get_cache_data(stdin_data) if cfg["show"].get("cache", True) else {}
 
     sep = f" {DIM}{cfg['separator']}{RESET}"
 
@@ -55,6 +83,9 @@ def render() -> str:
     if cfg["show"].get("model", True) and model:
         ctx = f"{DIM}{ctx_suffix}{RESET}" if ctx_suffix else ""
         segments["model"] = f"{pal['yellow']}{model}{ctx}{RESET}"
+
+    if cache:
+        segments["cache"] = render_cache(cache, pal)
 
     if cfg["show"].get("effort", True) and effort:
         ec = effort_color(effort, pal)

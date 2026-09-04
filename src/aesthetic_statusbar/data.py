@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from .formatters import fmt_tokens
@@ -107,3 +108,32 @@ def get_git_info() -> tuple:
         return f"{repo} \u00b7 {branch}", True
     except Exception:
         return "git repo not connected", False
+
+
+def get_cache_data(stdin_data: dict) -> dict:
+    pc = stdin_data.get("prompt_cache") or {}
+    if not pc:
+        pc = read_cached_stdin().get("prompt_cache") or {}
+    if not pc or not pc.get("caching_observed"):
+        return {}
+
+    last = pc.get("last_miss_cause") or {}
+    causes = last.get("causes") or []
+
+    expires_at = pc.get("expires_at")
+    warm = bool(pc.get("warm"))
+    ttl = pc.get("ttl")
+    if warm and expires_at is not None and expires_at <= time.time():
+        # Data can come from the cached stdin, which may have gone stale.
+        warm = False
+        causes = [f"ttl_expired_{ttl}"] if ttl else causes
+
+    return {
+        "warm": warm,
+        "ttl": ttl,
+        "expires_at": expires_at,
+        "hit_ratio": pc.get("hit_ratio"),
+        "misses": pc.get("misses", 0),
+        "last_cause": causes[0] if causes else None,
+        "miss_causes": pc.get("miss_causes") or {},
+    }

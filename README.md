@@ -11,7 +11,7 @@ A customizable, colorful status bar for [Claude Code](https://docs.anthropic.com
 - **Animated pet companions** — blob, cat, ghost, robot, sparkle (or disable)
 - **5 color palettes** — default, dracula, nord, solarized, catppuccin
 - **Fully configurable** — toggle any module, change order, adjust bar width
-- **Show/hide** — pet, 5h bar, 7d bar, git, model, effort, reset timer, context
+- **Show/hide** — pet, 5h bar, 7d bar, git, model, effort, reset timer, context, prompt cache
 - **Zero dependencies** — pure Python 3.8+, no pip packages needed
 - **Cache fallback** — shows last known rate limits when stdin is empty
 
@@ -90,9 +90,10 @@ aesthetic-statusbar init
     "model": true,
     "effort": true,
     "reset_timer": true,
-    "context": true
+    "context": true,
+    "cache": true
   },
-  "order": ["pet", "5h_bar", "7d_bar", "git", "model", "effort"]
+  "order": ["pet", "5h_bar", "7d_bar", "git", "model", "cache", "effort"]
 }
 ```
 
@@ -130,7 +131,7 @@ aesthetic-statusbar reset
 ```bash
 aesthetic-statusbar list palettes    # default, dracula, nord, solarized, catppuccin
 aesthetic-statusbar list pets        # blob, cat, ghost, robot, sparkle, none
-aesthetic-statusbar list modules     # pet, 5h_bar, 7d_bar, git, model, effort, reset_timer, context
+aesthetic-statusbar list modules     # pet, 5h_bar, 7d_bar, git, model, effort, reset_timer, context, cache
 ```
 
 ## Palettes
@@ -166,10 +167,23 @@ aesthetic-statusbar list modules     # pet, 5h_bar, 7d_bar, git, model, effort, 
 | `effort` | Current effort level (low/medium/high) |
 | `reset_timer` | Time until rate limit resets |
 | `context` | Token usage in model display |
+| `cache` | Prompt cache health: hit ratio, time left before it goes cold, and the likely cause of the last miss |
+
+### Prompt cache
+
+The `cache` module reads Claude Code's `prompt_cache` field, so you can see when the prompt cache is being invalidated and why.
+
+```
+⚡ 95% 44m          warm — 95% hit ratio, goes cold in 44 minutes
+⚡ 44% 44m ✗2 ttl 1h warm, but 2 misses this session, the last one from the TTL expiring
+⚡ cold: tools       cold right now because the tool definitions changed
+```
+
+Causes come from Claude Code's own heuristic: `system` (system prompt changed), `tools`, `model`, `messages` (history rewritten), `ttl 5m` / `ttl 1h` (idle past the TTL), `server`, `unknown`.
 
 ## How it works
 
-Claude Code injects JSON data (rate limits, model info, context window) via stdin to the status line command every refresh cycle. The script reads this data, falls back to a cached version if stdin is empty, and renders colored ANSI segments.
+Claude Code injects JSON data (rate limits, model info, context window, prompt cache) via stdin to the status line command every refresh cycle. The script reads this data, falls back to a cached version if stdin is empty, and renders colored ANSI segments.
 
 ## Uninstall
 

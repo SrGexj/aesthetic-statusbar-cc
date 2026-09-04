@@ -172,10 +172,17 @@ def cmd_setup_update():
 
     if curl_dir.exists() and (curl_dir / "run.py").exists():
         print("Detected curl install at", curl_dir)
-        print("Re-running curl installer...")
+        update_script = curl_dir / "update.sh"
+        if update_script.exists():
+            try:
+                subprocess.run(["bash", str(update_script)], check=True)
+                return
+            except Exception as e:
+                print(f"Local update script failed: {e}")
+        print("Falling back to remote update script...")
         try:
             subprocess.run(
-                ["bash", "-c", "curl -fsSL https://raw.githubusercontent.com/SrGexj/aesthetic-statusbar-cc/main/install.sh | bash"],
+                ["bash", "-c", "curl -fsSL https://raw.githubusercontent.com/SrGexj/aesthetic-statusbar-cc/main/update.sh | bash"],
                 check=True,
             )
         except Exception as e:
@@ -206,7 +213,7 @@ def cmd_setup_update():
 
     print("Could not detect install method. Update manually:")
     print("  pipx:  pipx upgrade aesthetic-statusbar")
-    print("  curl:  curl -fsSL https://raw.githubusercontent.com/SrGexj/aesthetic-statusbar-cc/main/install.sh | bash")
+    print("  curl:  curl -fsSL https://raw.githubusercontent.com/SrGexj/aesthetic-statusbar-cc/main/update.sh | bash")
     print("  pip:   pip install --upgrade git+https://github.com/SrGexj/aesthetic-statusbar-cc.git")
 
 

@@ -20,8 +20,9 @@ DEFAULT_CONFIG = {
         "effort": True,
         "reset_timer": True,
         "context": True,
+        "cache": True,
     },
-    "order": ["pet", "5h_bar", "7d_bar", "git", "model", "effort"],
+    "order": ["pet", "5h_bar", "7d_bar", "git", "model", "cache", "effort"],
 }
 
 
@@ -47,7 +48,11 @@ def load_config() -> dict:
                         cfg["show"][k] = v
             if "order" in user:
                 valid = [o for o in user["order"] if o in DEFAULT_CONFIG["order"]]
-                cfg["order"] = valid if valid else cfg["order"]
+                if valid:
+                    # Segments added after the user wrote their config still show up;
+                    # hiding one is done through "show", not by dropping it here.
+                    missing = [o for o in DEFAULT_CONFIG["order"] if o not in valid]
+                    cfg["order"] = valid + missing
         except Exception:
             pass
 

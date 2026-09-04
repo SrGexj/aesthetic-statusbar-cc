@@ -11,7 +11,16 @@
     "model": true,
     "effort": true,
     "reset_timer": true,
-    "context": true
+    "context": true,
+    "cache": true
   },
-  "order": ["pet", "5h_bar", "7d_bar", "git", "model", "effort"]
+  "order": [
+    "pet",
+    "5h_bar",
+    "7d_bar",
+    "git",
+    "model",
+    "cache",
+    "effort"
+  ]
 }
