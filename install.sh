@@ -32,6 +32,7 @@ MODULES=(
     data.py
     config.py
     renderer.py
+    version_check.py
     cli.py
 )
 

@@ -21,8 +21,9 @@ DEFAULT_CONFIG = {
         "reset_timer": True,
         "context": True,
         "cache": True,
+        "update": True,
     },
-    "order": ["pet", "5h_bar", "7d_bar", "git", "model", "cache", "effort"],
+    "order": ["pet", "5h_bar", "7d_bar", "git", "model", "cache", "effort", "update"],
 }
 
 

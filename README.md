@@ -11,9 +11,10 @@ A customizable, colorful status bar for [Claude Code](https://docs.anthropic.com
 - **Animated pet companions** — blob, cat, ghost, robot, sparkle (or disable)
 - **5 color palettes** — default, dracula, nord, solarized, catppuccin
 - **Fully configurable** — toggle any module, change order, adjust bar width
-- **Show/hide** — pet, 5h bar, 7d bar, git, model, effort, reset timer, context, prompt cache
+- **Show/hide** — pet, 5h bar, 7d bar, git, model, effort, reset timer, context, prompt cache, update notice
 - **Zero dependencies** — pure Python 3.8+, no pip packages needed
 - **Cache fallback** — shows last known rate limits when stdin is empty
+- **Update notice** — `↑1.2.0` when a new release is out, checked once a day in the background
 
 ## Quick Install (curl)
 
@@ -91,9 +92,10 @@ aesthetic-statusbar init
     "effort": true,
     "reset_timer": true,
     "context": true,
-    "cache": true
+    "cache": true,
+    "update": true
   },
-  "order": ["pet", "5h_bar", "7d_bar", "git", "model", "cache", "effort"]
+  "order": ["pet", "5h_bar", "7d_bar", "git", "model", "cache", "effort", "update"]
 }
 ```
 
@@ -131,7 +133,7 @@ aesthetic-statusbar reset
 ```bash
 aesthetic-statusbar list palettes    # default, dracula, nord, solarized, catppuccin
 aesthetic-statusbar list pets        # blob, cat, ghost, robot, sparkle, none
-aesthetic-statusbar list modules     # pet, 5h_bar, 7d_bar, git, model, effort, reset_timer, context, cache
+aesthetic-statusbar list modules     # pet, 5h_bar, 7d_bar, git, model, effort, reset_timer, context, cache, update
 ```
 
 ## Palettes
@@ -168,6 +170,7 @@ aesthetic-statusbar list modules     # pet, 5h_bar, 7d_bar, git, model, effort, 
 | `reset_timer` | Time until rate limit resets |
 | `context` | Token usage in model display |
 | `cache` | Prompt cache health: hit ratio, time left before it goes cold, and the likely cause of the last miss |
+| `update` | `↑1.2.0` when a newer release is available (hidden otherwise) |
 
 ### Prompt cache
 
@@ -180,6 +183,25 @@ The `cache` module reads Claude Code's `prompt_cache` field, so you can see when
 ```
 
 Causes come from Claude Code's own heuristic: `system` (system prompt changed), `tools`, `model`, `messages` (history rewritten), `ttl 5m` / `ttl 1h` (idle past the TTL), `server`, `unknown`.
+
+### Update notifications
+
+When a newer release exists, the bar shows `↑1.2.0`. The version is fetched
+from GitHub at most once a day by a detached background process — the render
+path only ever reads `~/.cache/aesthetic-statusbar/version_check.json`, so it
+never waits on the network. Turn it off with:
+
+```bash
+aesthetic-statusbar set --disable update
+```
+
+Then update with:
+
+```bash
+aesthetic-statusbar setup update
+# or, for a curl install:
+curl -fsSL https://raw.githubusercontent.com/SrGexj/aesthetic-statusbar-cc/main/update.sh | bash
+```
 
 ## How it works
 

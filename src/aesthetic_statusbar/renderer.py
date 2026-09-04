@@ -15,6 +15,7 @@ from .data import (
     get_cache_data,
 )
 from .config import load_config
+from .version_check import get_update
 
 
 def render_cache(cache: dict, pal: dict) -> str:
@@ -56,6 +57,7 @@ def render() -> str:
     effort = get_effort(settings) if cfg["show"].get("effort", True) else ""
     rate = get_rate_data(stdin_data) if (cfg["show"].get("5h_bar", True) or cfg["show"].get("7d_bar", True)) else {}
     cache = get_cache_data(stdin_data) if cfg["show"].get("cache", True) else {}
+    update = get_update() if cfg["show"].get("update", True) else ""
 
     sep = f" {DIM}{cfg['separator']}{RESET}"
 
@@ -86,6 +88,9 @@ def render() -> str:
 
     if cache:
         segments["cache"] = render_cache(cache, pal)
+
+    if update:
+        segments["update"] = f"{pal['cyan']}\u2191{update}{RESET}"
 
     if cfg["show"].get("effort", True) and effort:
         ec = effort_color(effort, pal)

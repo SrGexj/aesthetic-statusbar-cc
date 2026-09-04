@@ -12,7 +12,8 @@
     "effort": true,
     "reset_timer": true,
     "context": true,
-    "cache": true
+    "cache": true,
+    "update": true
   },
   "order": [
     "pet",
@@ -21,6 +22,7 @@
     "git",
     "model",
     "cache",
-    "effort"
+    "effort",
+    "update"
   ]
 }
