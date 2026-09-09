@@ -1,5 +1,8 @@
 """ANSI color palette and helpers."""
 
+import sys
+
+
 RESET = "\033[0m"
 DIM = "\033[38;5;238m"
 
@@ -140,3 +143,16 @@ def effort_color(effort: str, pal: dict) -> str:
         return pal["orange"]
     else:
         return pal["red_strong"]
+
+
+def enable_unicode_output() -> None:
+    """Make stdout carry the bar's box drawing, arrows and pets.
+
+    Windows consoles default to a legacy code page (cp1252 and friends) where
+    printing the bar raises UnicodeEncodeError. Ask for UTF-8, and fall back to
+    replacing what the terminal genuinely cannot encode rather than crashing.
+    """
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass

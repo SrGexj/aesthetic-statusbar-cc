@@ -15,7 +15,7 @@ from aesthetic_statusbar.config import (
     save_config,
     init_config,
 )
-from aesthetic_statusbar.colors import PALETTES
+from aesthetic_statusbar.colors import PALETTES, enable_unicode_output
 from aesthetic_statusbar.pets import PET_COLLECTIONS
 
 SETTINGS_FILE = Path.home() / ".claude" / "settings.json"
@@ -262,6 +262,8 @@ def main():
         help="Action to perform",
     )
     p_setup.set_defaults(func=cmd_setup)
+
+    enable_unicode_output()
 
     args = parser.parse_args()
     if not hasattr(args, "func"):

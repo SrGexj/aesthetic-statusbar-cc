@@ -86,6 +86,19 @@ def refresh() -> None:
     write_cache({"latest": latest, "checked_at": time.time()})
 
 
+def detach_kwargs(os_name: str = None) -> dict:
+    """Popen arguments that cut the child loose from this process."""
+    if (os_name or os.name) == "nt":
+        # start_new_session is POSIX-only; on Windows the child has to be
+        # detached from the console explicitly, or it stays attached to it and
+        # flashes a window on every refresh.
+        return {
+            "creationflags": getattr(subprocess, "DETACHED_PROCESS", 0x00000008)
+            | getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+        }
+    return {"start_new_session": True}
+
+
 def spawn_refresh() -> None:
     package_root = str(Path(__file__).resolve().parent.parent)
     env = dict(os.environ)
@@ -101,7 +114,7 @@ def spawn_refresh() -> None:
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            start_new_session=True,
+            **detach_kwargs(),
         )
     except Exception:
         pass

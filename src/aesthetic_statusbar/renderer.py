@@ -1,6 +1,13 @@
 """Main statusbar renderer."""
 
-from .colors import RESET, DIM, get_palette, color_for_pct, effort_color
+from .colors import (
+    RESET,
+    DIM,
+    get_palette,
+    color_for_pct,
+    effort_color,
+    enable_unicode_output,
+)
 from .pets import get_pet_frame
 from .bars import progress_bar
 from .formatters import format_reset, fmt_tokens, cache_cause_label
@@ -100,6 +107,7 @@ def render() -> str:
 
 
 def main():
+    enable_unicode_output()
     print(render())
 
 

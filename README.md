@@ -18,6 +18,8 @@ A customizable, colorful status bar for [Claude Code](https://docs.anthropic.com
 
 ## Quick Install (curl)
 
+macOS and Linux. On Windows, use pipx (see below).
+
 One-liner to install and auto-configure your Claude Code settings:
 
 ```bash
@@ -48,6 +50,27 @@ Add to `~/.claude/settings.json`:
   }
 }
 ```
+
+## Windows
+
+pipx is the way to go: it puts `aesthetic-statusbar-run.exe` on your PATH, so
+the same `statusLine` command works as everywhere else.
+
+```powershell
+py -m pip install --user pipx
+py -m pipx ensurepath          # reopen the terminal afterwards
+pipx install git+https://github.com/SrGexj/aesthetic-statusbar-cc.git
+aesthetic-statusbar setup install
+```
+
+The curl installer is a bash script, so it needs Git Bash or WSL, and the
+`run.py` it leaves behind is invoked as `python3` — which on Windows is usually
+the Store alias rather than an interpreter. If you go that route, point
+`statusLine` at `python "C:\Users\<you>\.claude\aesthetic-statusbar\run.py"`
+by hand.
+
+Installing inside WSL only works if Claude Code itself runs inside WSL; from a
+native Windows Claude Code, the WSL binary is not on the PATH.
 
 ## Install via pip
 
