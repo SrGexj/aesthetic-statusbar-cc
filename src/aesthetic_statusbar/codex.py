@@ -280,6 +280,18 @@ def hook_main() -> None:
     except Exception:
         _sys.exit(0)
 
-    if line:
-        _json.dump({"systemMessage": line}, _sys.stdout)
+    body = {"systemMessage": line} if line else {}
+
+    # Codex swallows a hook's output, so there is no other way to see what it
+    # was handed. Set AESTHETIC_HOOK_DEBUG to a path to find out.
+    debug = os.environ.get("AESTHETIC_HOOK_DEBUG")
+    if debug:
+        try:
+            with open(debug, "a", encoding="utf-8") as fh:
+                fh.write(_json.dumps({"payload": payload, "output": body}, ensure_ascii=False) + "\n")
+        except OSError:
+            pass
+
+    if body:
+        _json.dump(body, _sys.stdout)
     _sys.exit(0)
