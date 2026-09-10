@@ -275,7 +275,8 @@ def hook_line(payload: dict) -> str:
     )
     if snap.get("model") in ("", "?") and payload.get("model"):
         snap["model"] = payload["model"]
-    return render_snapshot(snap)
+    # Codex prints the model and the reasoning level under the composer already.
+    return render_snapshot(snap, hide=("model", "effort"))
 
 
 def hook_main() -> None:

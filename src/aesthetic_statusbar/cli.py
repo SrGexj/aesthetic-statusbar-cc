@@ -302,10 +302,10 @@ def read_codex_hooks() -> dict:
     return data
 
 
-# SessionStart puts the bar on screen the moment Codex opens; Stop refreshes it
-# after every turn. Both are the events whose output Codex prints for the user
-# rather than feeding to the model.
-HOOK_EVENTS = ("SessionStart", "Stop")
+# Stop is the event whose output Codex prints for the user rather than feeding
+# to the model. SessionStart can print too, but its bar is immediately followed
+# by the first turn's, so it only adds a line to scroll past.
+HOOK_EVENTS = ("Stop",)
 
 
 def write_codex_hook():

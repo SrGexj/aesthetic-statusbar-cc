@@ -41,8 +41,12 @@ def render_cache(cache: dict, pal: dict) -> str:
     return head
 
 
-def render_snapshot(snap: dict, text_bars: bool = False) -> str:
-    """Paint a snapshot. The agent it came from (Claude Code, Codex) is irrelevant here."""
+def render_snapshot(snap: dict, text_bars: bool = False, hide: tuple = ()) -> str:
+    """Paint a snapshot. The agent it came from (Claude Code, Codex) is irrelevant here.
+
+    `hide` drops segments for one surface without touching the user's config —
+    the Codex hook uses it to skip what Codex already prints under the composer.
+    """
     cfg = load_config()
     draw_bar = (lambda pct: text_bar(pct, width=cfg["bar_width"])) if text_bars else None
     pal = get_palette(cfg["palette"])
@@ -79,9 +83,13 @@ def render_snapshot(snap: dict, text_bars: bool = False) -> str:
         git_col = pal["green"] if git_ok else pal["gray"]
         segments["git"] = f"{git_col}\u25cf {git_text}{RESET}"
 
-    if cfg["show"].get("model", True) and model:
+    if cfg["show"].get("model", True) and (model or ctx_suffix):
         ctx = f"{DIM}{ctx_suffix}{RESET}" if ctx_suffix else ""
-        segments["model"] = f"{pal['yellow']}{model}{ctx}{RESET}"
+        # Hiding the model name keeps the context counter, which would otherwise
+        # disappear with it: it rides along in the same segment.
+        name = "" if "model" in hide else model
+        if name or ctx:
+            segments["model"] = f"{pal['yellow']}{name}{RESET}{ctx}" if name else ctx
 
     if cache:
         segments["cache"] = render_cache(cache, pal)
@@ -93,6 +101,10 @@ def render_snapshot(snap: dict, text_bars: bool = False) -> str:
     if cfg["show"].get("effort", True) and effort:
         ec = effort_color(effort, pal)
         segments["effort"] = f"{ec}effort: {effort}{RESET}"
+
+    for key in hide:
+        if key != "model":
+            segments.pop(key, None)
 
     ordered = [segments[k] for k in cfg["order"] if k in segments]
     return sep.join(ordered)

@@ -4,6 +4,7 @@ import io
 import json
 import os
 import sys
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -11,6 +12,12 @@ from pathlib import Path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from aesthetic_statusbar import cli, codex
+
+ANSI = re.compile(r"\033\[[\d;]*m")
+
+
+def plain(text: str) -> str:
+    return ANSI.sub("", text)
 
 
 class CodexHomeCase(unittest.TestCase):
@@ -30,12 +37,11 @@ class CodexHomeCase(unittest.TestCase):
 
 
 class TestHooksFile(CodexHomeCase):
-    def test_registers_both_events(self):
+    def test_registers_the_stop_event(self):
         cli.write_codex_hook()
         events = self.hooks_json()["hooks"]
-        self.assertEqual(sorted(events), ["SessionStart", "Stop"])
-        for entries in events.values():
-            self.assertEqual(entries[0]["hooks"][0]["command"], cli.HOOK_COMMAND)
+        self.assertEqual(sorted(events), ["Stop"])
+        self.assertEqual(events["Stop"][0]["hooks"][0]["command"], cli.HOOK_COMMAND)
 
     def test_codex_only_accepts_the_nested_shape(self):
         # A bare event map at the root makes Codex reject the whole file with
@@ -65,7 +71,6 @@ class TestHooksFile(CodexHomeCase):
         data = self.hooks_json()
         commands = [h["command"] for e in data["hooks"]["Stop"] for h in e["hooks"]]
         self.assertEqual(commands, ["lint.sh"])
-        self.assertNotIn("SessionStart", data["hooks"])
 
     def test_removing_when_nothing_is_registered(self):
         self.hooks.write_text(json.dumps({"hooks": {}}), encoding="utf-8")
@@ -99,7 +104,12 @@ class TestHookOutput(CodexHomeCase):
     def test_emits_a_system_message(self):
         body = json.loads(self.run_hook(json.dumps(self.payload())))
         self.assertIn("systemMessage", body)
-        self.assertIn("gpt-6-astra", body["systemMessage"])
+        self.assertIn("\u25cf", body["systemMessage"])  # the git segment
+
+    def test_leaves_out_what_codex_already_prints(self):
+        message = json.loads(self.run_hook(json.dumps(self.payload())))["systemMessage"]
+        self.assertNotIn("gpt-6-astra", message)
+        self.assertNotIn("effort:", message)
 
     def test_reads_the_rollout_the_payload_points_at(self):
         rollout = self.home / "rollout.jsonl"
@@ -120,8 +130,8 @@ class TestHookOutput(CodexHomeCase):
         rollout.write_text("\n".join(json.dumps(e) for e in events) + "\n", encoding="utf-8")
 
         message = json.loads(self.run_hook(json.dumps(self.payload(transcript_path=str(rollout)))))["systemMessage"]
-        self.assertIn("gpt-5.6-terra", message)  # the rollout wins over the payload
-        self.assertIn("1.0k/200k", message)
+        self.assertIn("1.0k/200k", plain(message))  # this session's own numbers
+        self.assertIn("7%", plain(message))
 
     def test_junk_on_stdin_is_not_the_session_s_problem(self):
         self.assertIn("systemMessage", self.run_hook("not json at all"))

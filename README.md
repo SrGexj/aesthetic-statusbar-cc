@@ -253,11 +253,12 @@ only picks from a fixed list of built-in items (`model-with-reasoning`,
 command the way `statusLine` does in Claude Code.
 
 Two things follow from that. The bar is **printed inside Codex** by a hook —
-`SessionStart` and `Stop` may return a `systemMessage`, which Codex shows to
-you and never sends to the model — and it is **pinned outside Codex** on a
+a `Stop` hook may return a `systemMessage`, which Codex shows to you after
+every turn and never sends to the model — and it is **pinned outside Codex** on a
 surface Codex does not draw. The hook lives in `~/.codex/hooks.json`; Codex
 asks you to trust a changed hook config the first time you start it, under
-`/hooks`. It renders as `↳ Hook · <the bar>` — Codex adds the prefix.
+`/hooks`. It renders as `↳ Hook · <the bar>` — Codex adds the prefix — and leaves out
+the model and the effort level, which Codex already prints under the composer.
 
 Set `AESTHETIC_HOOK_DEBUG=/tmp/hook.log` before starting Codex to record what
 each hook was handed and what it answered. Either way the numbers come from the same place: Codex writes a rollout file
