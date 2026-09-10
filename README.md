@@ -275,7 +275,13 @@ surface is available:
   `--tmux` rewrites the ANSI colours as tmux styles, because tmux strips raw
   escape sequences coming out of `#(command)`.
 
-- **Outside tmux** — the terminal's title bar. The installer wraps the `codex`
+- **In Warp** — a split pane under Codex. Warp paints its own title at the top
+  of the window, so the title watcher has nowhere useful to go there. The
+  installer writes `~/.warp/launch_configurations/codex-statusbar.yaml`; open it
+  from the command palette under *Launch Configuration*. By hand: split the pane
+  and run `aesthetic-statusbar codex watch --pane` in the small one.
+
+- **Anywhere else** — the terminal's title bar. The installer wraps the `codex`
   command in `~/.zshrc` (or `~/.bashrc`) so a watcher paints the title while
   Codex runs and stops when it exits. Titles carry no colour, so the bars are
   drawn with block characters instead. If Codex fights over the title, turn its
@@ -285,9 +291,13 @@ Both blocks are delimited by markers, and `aesthetic-statusbar codex uninstall`
 takes them out again. To see the bar without installing anything:
 
 ```bash
-aesthetic-statusbar codex run     # print it once
-aesthetic-statusbar codex watch   # keep it in the terminal title
+aesthetic-statusbar codex run          # print it once
+aesthetic-statusbar codex watch        # keep it in the terminal title
+aesthetic-statusbar codex watch --pane # fill a split pane with it
 ```
+
+A bar pinned inside Codex's own pane is not possible: Codex redraws that area
+every frame. Every surface above is one Codex does not own.
 
 Differences against the Claude Code bar:
 

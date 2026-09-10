@@ -311,14 +311,15 @@ def shell_rc() -> Path:
 def shell_function() -> str:
     """Wrap `codex` so the bar comes up with it and dies with it.
 
-    Inside tmux the status line already carries the bar, so the wrapper only
-    starts the title watcher when there is no tmux to draw into.
+    The title watcher is the last resort. tmux already carries the bar on its
+    status line, and Warp paints its own title at the top of the window, where
+    a status bar is worse than useless — there the bar belongs in a pane.
     """
     return "\n".join(
         [
             SHELL_MARKER,
             "codex() {",
-            '  if [ -n "$TMUX" ]; then',
+            '  if [ -n "$TMUX" ] || [ "$TERM_PROGRAM" = "WarpTerminal" ]; then',
             '    command codex "$@"',
             "    return",
             "  fi",

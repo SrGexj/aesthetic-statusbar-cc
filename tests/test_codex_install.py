@@ -44,8 +44,11 @@ class TestShellFunction(RcCase):
         self.assertIn('command codex "$@"', fn)
         self.assertIn(f"{cli.CODEX_COMMAND} --watch &", fn)
 
-    def test_tmux_sessions_skip_the_title_watcher(self):
-        self.assertIn('if [ -n "$TMUX" ]; then', cli.shell_function())
+    def test_tmux_and_warp_skip_the_title_watcher(self):
+        # Both draw the bar somewhere better: a status line, and a pane.
+        guard = cli.shell_function().splitlines()[2]
+        self.assertIn('[ -n "$TMUX" ]', guard)
+        self.assertIn('"$TERM_PROGRAM" = "WarpTerminal"', guard)
 
     def test_write_then_remove_leaves_the_file_as_it_was(self):
         self.rc.write_text("export EDITOR=vim\n", encoding="utf-8")
