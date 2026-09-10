@@ -21,6 +21,7 @@ classifiers = [
 [project.scripts]
 aesthetic-statusbar = "aesthetic_statusbar.cli:main"
 aesthetic-statusbar-run = "aesthetic_statusbar.renderer:main"
+aesthetic-statusbar-codex = "aesthetic_statusbar.renderer:codex_main"
 
 [project.urls]
 Homepage = "https://github.com/SrGexj/aesthetic-statusbar-cc"

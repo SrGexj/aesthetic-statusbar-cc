@@ -21,6 +21,9 @@ from aesthetic_statusbar.pets import PET_COLLECTIONS
 SETTINGS_FILE = Path.home() / ".claude" / "settings.json"
 
 STATUSBAR_COMMAND = "aesthetic-statusbar-run"
+CODEX_COMMAND = "aesthetic-statusbar-codex"
+TMUX_CONF = Path.home() / ".tmux.conf"
+TMUX_MARKER = "# aesthetic-statusbar (codex)"
 
 
 def cmd_init(args):
@@ -222,6 +225,98 @@ def cmd_run(args):
     print(render())
 
 
+def cmd_codex(args):
+    if args.codex_action == "run":
+        cmd_codex_run(as_tmux=args.tmux)
+    elif args.codex_action == "install":
+        cmd_codex_install(tmux=args.tmux)
+    elif args.codex_action == "uninstall":
+        cmd_codex_uninstall()
+
+
+def cmd_codex_run(as_tmux: bool = False):
+    from aesthetic_statusbar.codex import codex_snapshot
+    from aesthetic_statusbar.renderer import render_snapshot
+
+    line = render_snapshot(codex_snapshot())
+    if as_tmux:
+        from aesthetic_statusbar.tmux import ansi_to_tmux
+
+        line = ansi_to_tmux(line)
+    print(line)
+
+
+def tmux_line() -> str:
+    return f'set -g status-right "#({CODEX_COMMAND} --tmux)"'
+
+
+def cmd_codex_install(tmux: bool = False):
+    init_config()
+
+    if not shutil.which(CODEX_COMMAND):
+        print(f"Warning: '{CODEX_COMMAND}' not found in PATH. Install the package via pipx/pip first.")
+
+    codex_home = Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
+    if not codex_home.exists():
+        print(f"Warning: no Codex home at {codex_home}. The bar will have nothing to read.")
+
+    print("Codex has no statusline command hook, so the bar renders outside its TUI.")
+    print(f"Print it once:  {CODEX_COMMAND}")
+    print("\ntmux — add to ~/.tmux.conf:")
+    print(f"  {TMUX_MARKER}")
+    print(f"  {tmux_line()}")
+    print("  set -g status-interval 5")
+    print("  set -g status-right-length 200")
+
+    if tmux:
+        write_tmux_config()
+    else:
+        print("\nRe-run with --tmux to append those lines automatically.")
+
+
+def write_tmux_config():
+    block = "\n".join(
+        [
+            TMUX_MARKER,
+            tmux_line(),
+            "set -g status-interval 5",
+            "set -g status-right-length 200",
+            "",
+        ]
+    )
+
+    existing = TMUX_CONF.read_text(encoding="utf-8") if TMUX_CONF.exists() else ""
+    if TMUX_MARKER in existing:
+        print(f"\n{TMUX_CONF} already has the statusbar block")
+        return
+
+    sep = "" if existing.endswith("\n") or not existing else "\n"
+    TMUX_CONF.write_text(f"{existing}{sep}\n{block}", encoding="utf-8")
+    print(f"\nAppended the statusbar block to {TMUX_CONF}")
+    print("Reload it with:  tmux source-file ~/.tmux.conf")
+
+
+def cmd_codex_uninstall():
+    if not TMUX_CONF.exists():
+        print(f"No {TMUX_CONF} to clean")
+        return
+
+    lines = TMUX_CONF.read_text(encoding="utf-8").splitlines()
+    if TMUX_MARKER not in lines:
+        print(f"No statusbar block found in {TMUX_CONF}")
+        return
+
+    start = lines.index(TMUX_MARKER)
+    end = start + 1
+    while end < len(lines) and lines[end].startswith("set -g status"):
+        end += 1
+    del lines[start:end]
+
+    TMUX_CONF.write_text("\n".join(lines).rstrip("\n") + "\n", encoding="utf-8")
+    print(f"Removed the statusbar block from {TMUX_CONF}")
+    print("Reload it with:  tmux source-file ~/.tmux.conf")
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="aesthetic-statusbar",
@@ -254,6 +349,19 @@ def main():
 
     p_run = sub.add_parser("run", help="Run the statusbar renderer (for testing)")
     p_run.set_defaults(func=cmd_run)
+
+    p_codex = sub.add_parser("codex", help="Use the bar with OpenAI Codex CLI")
+    p_codex.add_argument(
+        "codex_action",
+        choices=["run", "install", "uninstall"],
+        help="Render the bar, or set up / remove the tmux integration",
+    )
+    p_codex.add_argument(
+        "--tmux",
+        action="store_true",
+        help="With 'run', emit tmux markup; with 'install', write the block to ~/.tmux.conf",
+    )
+    p_codex.set_defaults(func=cmd_codex)
 
     p_setup = sub.add_parser("setup", help="Install, update, or uninstall")
     p_setup.add_argument(

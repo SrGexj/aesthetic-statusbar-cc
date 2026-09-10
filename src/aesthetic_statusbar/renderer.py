@@ -11,16 +11,7 @@ from .colors import (
 from .pets import get_pet_frame
 from .bars import progress_bar
 from .formatters import format_reset, fmt_tokens, cache_cause_label
-from .data import (
-    read_stdin,
-    get_rate_data,
-    read_settings,
-    get_model,
-    get_context_suffix,
-    get_effort,
-    get_git_info,
-    get_cache_data,
-)
+from .data import claude_snapshot, get_git_info
 from .config import load_config
 from .version_check import get_update, update_command
 
@@ -50,19 +41,18 @@ def render_cache(cache: dict, pal: dict) -> str:
     return head
 
 
-def render() -> str:
-    stdin_data = read_stdin()
-    settings = read_settings()
+def render_snapshot(snap: dict) -> str:
+    """Paint a snapshot. The agent it came from (Claude Code, Codex) is irrelevant here."""
     cfg = load_config()
     pal = get_palette(cfg["palette"])
 
     pet_frame = get_pet_frame(cfg["pet"]) if cfg["show"].get("pet", True) and cfg["pet"] != "none" else ""
     git_text, git_ok = get_git_info() if cfg["show"].get("git", True) else ("", False)
-    model = get_model(stdin_data, settings) if cfg["show"].get("model", True) else ""
-    ctx_suffix = get_context_suffix(stdin_data) if cfg["show"].get("context", True) else ""
-    effort = get_effort(stdin_data, settings) if cfg["show"].get("effort", True) else ""
-    rate = get_rate_data(stdin_data) if (cfg["show"].get("5h_bar", True) or cfg["show"].get("7d_bar", True)) else {}
-    cache = get_cache_data(stdin_data) if cfg["show"].get("cache", True) else {}
+    model = snap.get("model", "") if cfg["show"].get("model", True) else ""
+    ctx_suffix = snap.get("ctx_suffix", "") if cfg["show"].get("context", True) else ""
+    effort = snap.get("effort", "") if cfg["show"].get("effort", True) else ""
+    rate = snap.get("rate", {}) if (cfg["show"].get("5h_bar", True) or cfg["show"].get("7d_bar", True)) else {}
+    cache = snap.get("cache", {}) if cfg["show"].get("cache", True) else {}
     update = get_update() if cfg["show"].get("update", True) else ""
 
     sep = f" {DIM}{cfg['separator']}{RESET}"
@@ -76,13 +66,13 @@ def render() -> str:
         bar = progress_bar(rate["pct_5h"], pal, width=cfg["bar_width"])
         reset_str = format_reset(rate["reset_5h"]) if cfg["show"].get("reset_timer", True) else ""
         reset_fmt = f" {pal['white_dim']}{reset_str}{RESET}" if reset_str else ""
-        segments["5h_bar"] = f"5h {bar}{reset_fmt}"
+        segments["5h_bar"] = f"{rate.get('label_5h', '5h')} {bar}{reset_fmt}"
 
     if cfg["show"].get("7d_bar", True) and rate.get("pct_7d") is not None:
         bar = progress_bar(rate["pct_7d"], pal, width=cfg["bar_width"])
         reset_str = format_reset(rate["reset_7d"]) if cfg["show"].get("reset_timer", True) else ""
         reset_fmt = f" {pal['white_dim']}{reset_str}{RESET}" if reset_str else ""
-        segments["7d_bar"] = f"7d {bar}{reset_fmt}"
+        segments["7d_bar"] = f"{rate.get('label_7d', '7d')} {bar}{reset_fmt}"
 
     if cfg["show"].get("git", True):
         git_col = pal["green"] if git_ok else pal["gray"]
@@ -107,9 +97,27 @@ def render() -> str:
     return sep.join(ordered)
 
 
+def render() -> str:
+    return render_snapshot(claude_snapshot())
+
+
 def main():
     enable_unicode_output()
     print(render())
+
+
+def codex_main():
+    import sys
+
+    from .codex import codex_snapshot
+
+    enable_unicode_output()
+    line = render_snapshot(codex_snapshot())
+    if "--tmux" in sys.argv[1:]:
+        from .tmux import ansi_to_tmux
+
+        line = ansi_to_tmux(line)
+    print(line)
 
 
 if __name__ == "__main__":

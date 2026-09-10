@@ -245,6 +245,48 @@ aesthetic-statusbar setup update
 curl -fsSL https://raw.githubusercontent.com/SrGexj/aesthetic-statusbar-cc/main/update.sh | bash
 ```
 
+## OpenAI Codex CLI
+
+The same bar works with Codex, but not inside its TUI: Codex's `/statusline`
+only picks from a fixed list of built-in items, and there is no hook to hand it
+a command. What it does write is a rollout file per session
+(`~/.codex/sessions/**/rollout-*.jsonl`) carrying the same numbers Claude Code
+sends over stdin — token usage, context window, rate limits, cached input
+tokens. The Codex adapter reads the rollout of the session running in the
+current directory and renders the bar somewhere else, usually the tmux status
+line.
+
+```bash
+# Print the bar once
+aesthetic-statusbar codex run
+
+# Print the tmux setup, or write it to ~/.tmux.conf
+aesthetic-statusbar codex install
+aesthetic-statusbar codex install --tmux
+```
+
+The tmux block it writes:
+
+```tmux
+# aesthetic-statusbar (codex)
+set -g status-right "#(aesthetic-statusbar-codex --tmux)"
+set -g status-interval 5
+set -g status-right-length 200
+```
+
+`--tmux` rewrites the ANSI colours as tmux styles, because tmux strips raw
+escape sequences that come out of `#(command)`. Remove the block again with
+`aesthetic-statusbar codex uninstall`.
+
+Differences against the Claude Code bar:
+
+- The rate-limit bars are labelled from the window Codex reports (`5h`, `7d`,
+  `30d`), and the second bar only appears when Codex reports a second window.
+- The cache segment shows the hit ratio of the last turn. Codex does not report
+  why a prompt missed the cache, so there is no miss cause and no TTL countdown.
+- Effort comes from the session's reasoning effort, falling back to
+  `model_reasoning_effort` in `~/.codex/config.toml`.
+
 ## Tests
 
 The cause-precedence and rendering logic is covered by the standard library's
@@ -257,6 +299,10 @@ python3 -m unittest discover -s tests
 ## How it works
 
 Claude Code injects JSON data (rate limits, model info, context window, prompt cache) via stdin to the status line command every refresh cycle. The script reads this data, falls back to a cached version if stdin is empty, and renders colored ANSI segments.
+
+Both agents end up in the same shape: `claude_snapshot()` reads the stdin
+payload, `codex_snapshot()` reads a Codex rollout, and `render_snapshot()`
+paints whichever it is given.
 
 ## Uninstall
 

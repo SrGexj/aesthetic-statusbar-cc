@@ -86,8 +86,7 @@ class TestNoticeRendering(unittest.TestCase):
         cfg["order"] = list(config.DEFAULT_CONFIG["order"])
 
         patches = {
-            "read_stdin": lambda: {},
-            "read_settings": lambda: {},
+            "claude_snapshot": lambda: {},
             "load_config": lambda: cfg,
             "get_update": lambda: "1.2.0",
             "update_command": lambda: "do-the-thing",

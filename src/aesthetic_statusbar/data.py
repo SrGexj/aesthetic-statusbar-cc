@@ -115,6 +115,19 @@ def get_git_info() -> tuple:
         return "git repo not connected", False
 
 
+def claude_snapshot() -> dict:
+    """Everything the renderer needs, read from Claude Code's statusline payload."""
+    stdin_data = read_stdin()
+    settings = read_settings()
+    return {
+        "model": get_model(stdin_data, settings),
+        "ctx_suffix": get_context_suffix(stdin_data),
+        "effort": get_effort(stdin_data, settings),
+        "rate": get_rate_data(stdin_data),
+        "cache": get_cache_data(stdin_data),
+    }
+
+
 def get_cache_data(stdin_data: dict) -> dict:
     pc = stdin_data.get("prompt_cache") or {}
     if not pc:
