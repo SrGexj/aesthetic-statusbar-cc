@@ -257,7 +257,10 @@ Two things follow from that. The bar is **printed inside Codex** by a hook —
 you and never sends to the model — and it is **pinned outside Codex** on a
 surface Codex does not draw. The hook lives in `~/.codex/hooks.json`; Codex
 asks you to trust a changed hook config the first time you start it, under
-`/hooks`. Either way the numbers come from the same place: Codex writes a rollout file
+`/hooks`. It renders as `↳ Hook · <the bar>` — Codex adds the prefix.
+
+Set `AESTHETIC_HOOK_DEBUG=/tmp/hook.log` before starting Codex to record what
+each hook was handed and what it answered. Either way the numbers come from the same place: Codex writes a rollout file
 per session (`~/.codex/sessions/**/rollout-*.jsonl`) carrying what Claude Code
 sends over stdin — token usage, context window, rate limits, cached input
 tokens. A hook payload names its own rollout; outside a hook, the adapter picks

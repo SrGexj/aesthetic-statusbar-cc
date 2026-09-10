@@ -159,6 +159,46 @@ class TestRollout(unittest.TestCase):
         self.assertEqual(codex.read_rollout(""), {})
 
 
+class TestStartupFallback(unittest.TestCase):
+    """A session with no turn yet still knows the account's usage."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.dir = Path(tmp.name)
+        self.fresh = self.dir / "fresh.jsonl"
+        write_rollout(self.fresh, [{"type": "turn_context", "payload": {"model": "gpt-6-astra"}}])
+
+        self.older = self.dir / "older.jsonl"
+        write_rollout(
+            self.older,
+            [{"type": "event_msg", "payload": token_count(primary={"used_percent": 7.0, "window_minutes": 300})}],
+        )
+        orig = codex.find_thread_rows
+        codex.find_thread_rows = lambda: [{"rollout_path": str(self.older)}]
+        self.addCleanup(setattr, codex, "find_thread_rows", orig)
+
+    def test_borrows_the_last_reported_limits(self):
+        snap = codex.codex_snapshot(rollout_path=str(self.fresh))
+        self.assertEqual(snap["rate"]["pct_5h"], 7.0)
+
+    def test_but_not_the_context_or_cache_of_another_session(self):
+        snap = codex.codex_snapshot(rollout_path=str(self.fresh))
+        self.assertEqual(snap["ctx_suffix"], "")
+        self.assertEqual(snap["cache"], {})
+
+    def test_this_session_wins_once_it_reports(self):
+        write_rollout(
+            self.fresh,
+            [
+                {"type": "turn_context", "payload": {"model": "gpt-6-astra"}},
+                {"type": "event_msg", "payload": token_count(primary={"used_percent": 42.0, "window_minutes": 300})},
+            ],
+        )
+        snap = codex.codex_snapshot(rollout_path=str(self.fresh))
+        self.assertEqual(snap["rate"]["pct_5h"], 42.0)
+
+
 class TestSnapshotRendering(unittest.TestCase):
     def setUp(self):
         # The renderer reads the user's own config, which may hide segments.

@@ -56,6 +56,15 @@ def _state_db() -> Path:
 def find_thread(cwd: str = None) -> dict:
     """Most recent Codex session, preferring one started in this directory."""
     cwd = cwd or os.getcwd()
+    rows = find_thread_rows()
+    for row in rows:
+        if row.get("cwd") == cwd:
+            return row
+    return rows[0] if rows else {}
+
+
+def find_thread_rows() -> list:
+    """Recent sessions, newest first."""
     rows = []
     try:
         con = sqlite3.connect(f"file:{_state_db()}?mode=ro", uri=True)
@@ -75,10 +84,7 @@ def find_thread(cwd: str = None) -> dict:
     if not rows:
         rows = _scan_rollouts()
 
-    for row in rows:
-        if row.get("cwd") == cwd:
-            return row
-    return rows[0] if rows else {}
+    return rows
 
 
 def _scan_rollouts() -> list:
@@ -215,6 +221,20 @@ def get_effort(thread: dict, turn_context: dict, config: dict) -> str:
     return "?"
 
 
+def latest_rate_limits() -> dict:
+    """Rate limits from the newest session that reported any.
+
+    A session that has not sent a turn yet knows nothing about usage, and a bar
+    with a hole in it at startup is worse than one showing the last figures the
+    account reported: the limits are the account's, not the session's.
+    """
+    for row in (find_thread_rows() or [])[:5]:
+        token_count = read_rollout(row.get("rollout_path", "")).get("token_count") or {}
+        if token_count.get("rate_limits"):
+            return token_count
+    return {}
+
+
 def codex_snapshot(cwd: str = None, rollout_path: str = None) -> dict:
     # A hook payload names the session's own rollout, which beats guessing from
     # the working directory: two Codex sessions can share one.
@@ -224,13 +244,15 @@ def codex_snapshot(cwd: str = None, rollout_path: str = None) -> dict:
     turn_context = rollout.get("turn_context") or {}
     config = read_codex_config()
 
+    rate_source = token_count if (token_count.get("rate_limits") or {}) else latest_rate_limits()
+
     model = turn_context.get("model") or thread.get("model") or config.get("model") or "?"
 
     return {
         "model": model,
         "ctx_suffix": get_context_suffix(token_count),
         "effort": get_effort(thread, turn_context, config),
-        "rate": get_rate_data(token_count),
+        "rate": get_rate_data(rate_source),
         "cache": get_cache_data(token_count),
         "session_age": _age(thread),
     }
