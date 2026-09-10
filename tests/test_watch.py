@@ -43,6 +43,20 @@ class TestTitleLoop(unittest.TestCase):
         watch.title_loop(once=True)
 
 
+class TestPaneLoop(unittest.TestCase):
+    def setUp(self):
+        self.out = io.StringIO()
+        orig_writer, orig_pane = watch._writer, watch.pane_text
+        watch._writer = lambda: self.out
+        watch.pane_text = lambda: "\033[38;5;220mbar\033[0m"
+        self.addCleanup(setattr, watch, "_writer", orig_writer)
+        self.addCleanup(setattr, watch, "pane_text", orig_pane)
+
+    def test_clears_the_pane_and_keeps_the_colors(self):
+        watch.pane_loop(once=True)
+        self.assertEqual(self.out.getvalue(), "\033[H\033[2J\033[38;5;220mbar\033[0m\n")
+
+
 class TestPlain(unittest.TestCase):
     def test_strips_ansi(self):
         self.assertEqual(watch.plain("\033[38;5;220mmodel\033[0m"), "model")

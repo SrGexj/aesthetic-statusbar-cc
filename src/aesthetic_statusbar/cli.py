@@ -231,9 +231,9 @@ def cmd_codex(args):
     if args.codex_action == "run":
         cmd_codex_run(as_tmux=args.tmux)
     elif args.codex_action == "watch":
-        from aesthetic_statusbar.watch import title_loop
+        from aesthetic_statusbar.watch import pane_loop, title_loop
 
-        title_loop()
+        pane_loop() if args.pane else title_loop()
     elif args.codex_action == "install":
         cmd_codex_install()
     elif args.codex_action == "uninstall":
@@ -254,6 +254,51 @@ def cmd_codex_run(as_tmux: bool = False):
 
 def tmux_line() -> str:
     return f'set -g status-right "#({CODEX_COMMAND} --tmux)"'
+
+
+WARP_DIR = Path.home() / ".warp"
+WARP_CONFIG = WARP_DIR / "launch_configurations" / "codex-statusbar.yaml"
+
+
+def warp_launch_config(cwd: str) -> str:
+    """A Warp launch configuration: Codex on top, the bar in a pane below it.
+
+    Warp paints the terminal title itself, so the title watcher is invisible
+    there. A split pane is the surface Warp does leave alone.
+    """
+    return "\n".join(
+        [
+            "---",
+            "name: Codex + statusbar",
+            "windows:",
+            "  - tabs:",
+            "      - title: codex",
+            "        layout:",
+            "          split_direction: horizontal",
+            "          panes:",
+            f"            - cwd: {cwd}",
+            "              commands:",
+            "                - exec: codex",
+            f"            - cwd: {cwd}",
+            "              commands:",
+            f"                - exec: {CODEX_COMMAND} --pane",
+            "",
+        ]
+    )
+
+
+def write_warp_config(cwd: str = None):
+    cwd = cwd or os.getcwd()
+    WARP_CONFIG.parent.mkdir(parents=True, exist_ok=True)
+    WARP_CONFIG.write_text(warp_launch_config(cwd), encoding="utf-8")
+    print(f"Wrote a Warp launch configuration to {WARP_CONFIG}")
+    print("  Open it from the command palette: 'Launch Configuration' > Codex + statusbar")
+
+
+def remove_warp_config():
+    if WARP_CONFIG.exists():
+        WARP_CONFIG.unlink()
+        print(f"Removed {WARP_CONFIG}")
 
 
 def shell_rc() -> Path:
@@ -305,12 +350,16 @@ def cmd_codex_install():
 
     print("Codex has no statusline hook, so the bar is drawn outside its TUI:")
     print("  - inside tmux, on the status line")
-    print("  - outside tmux, in the terminal's title bar while codex runs")
+    print("  - in Warp, in a split pane below Codex")
+    print("  - anywhere else, in the terminal's title bar while codex runs")
 
     if shutil.which("tmux"):
         write_tmux_config()
     else:
         print("\ntmux not installed — skipping the tmux status line.")
+
+    if WARP_DIR.exists():
+        write_warp_config()
 
     write_shell_function()
 
@@ -373,6 +422,7 @@ def write_tmux_config():
 
 def cmd_codex_uninstall():
     remove_shell_function()
+    remove_warp_config()
     remove_tmux_config()
 
 
@@ -440,6 +490,11 @@ def main():
         "--tmux",
         action="store_true",
         help="With 'run', emit tmux markup instead of ANSI",
+    )
+    p_codex.add_argument(
+        "--pane",
+        action="store_true",
+        help="With 'watch', fill a split pane with the coloured bar instead of the title",
     )
     p_codex.set_defaults(func=cmd_codex)
 

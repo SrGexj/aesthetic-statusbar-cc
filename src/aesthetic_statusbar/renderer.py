@@ -115,6 +115,12 @@ def codex_main():
     enable_unicode_output()
     args = sys.argv[1:]
 
+    if "--pane" in args:
+        from .watch import pane_loop
+
+        pane_loop()
+        return
+
     if "--watch" in args:
         from .watch import title_loop
 
