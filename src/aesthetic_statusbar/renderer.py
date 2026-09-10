@@ -60,7 +60,7 @@ def render() -> str:
     git_text, git_ok = get_git_info() if cfg["show"].get("git", True) else ("", False)
     model = get_model(stdin_data, settings) if cfg["show"].get("model", True) else ""
     ctx_suffix = get_context_suffix(stdin_data) if cfg["show"].get("context", True) else ""
-    effort = get_effort(settings) if cfg["show"].get("effort", True) else ""
+    effort = get_effort(stdin_data, settings) if cfg["show"].get("effort", True) else ""
     rate = get_rate_data(stdin_data) if (cfg["show"].get("5h_bar", True) or cfg["show"].get("7d_bar", True)) else {}
     cache = get_cache_data(stdin_data) if cfg["show"].get("cache", True) else {}
     update = get_update() if cfg["show"].get("update", True) else ""

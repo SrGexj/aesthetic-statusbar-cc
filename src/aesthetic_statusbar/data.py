@@ -90,7 +90,12 @@ def get_context_suffix(stdin_data: dict) -> str:
     return f"({fmt_tokens(used_tok)}/{fmt_tokens(size)})"
 
 
-def get_effort(settings: dict) -> str:
+def get_effort(stdin_data: dict, settings: dict) -> str:
+    effort = stdin_data.get("effort", {})
+    if isinstance(effort, dict):
+        level = effort.get("level")
+        if level:
+            return level
     return settings.get("effortLevel", "?")
 
 
