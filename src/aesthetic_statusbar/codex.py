@@ -215,9 +215,11 @@ def get_effort(thread: dict, turn_context: dict, config: dict) -> str:
     return "?"
 
 
-def codex_snapshot(cwd: str = None) -> dict:
-    thread = find_thread(cwd)
-    rollout = read_rollout(thread.get("rollout_path", ""))
+def codex_snapshot(cwd: str = None, rollout_path: str = None) -> dict:
+    # A hook payload names the session's own rollout, which beats guessing from
+    # the working directory: two Codex sessions can share one.
+    thread = {} if rollout_path else find_thread(cwd)
+    rollout = read_rollout(rollout_path or thread.get("rollout_path", ""))
     token_count = rollout.get("token_count") or {}
     turn_context = rollout.get("turn_context") or {}
     config = read_codex_config()
@@ -239,3 +241,45 @@ def _age(thread: dict) -> float:
     if not updated:
         return 0.0
     return max(0.0, time.time() - updated / 1000)
+
+
+def hook_line(payload: dict) -> str:
+    """The bar for a Stop-hook payload, which names its own session."""
+    from .renderer import render_snapshot
+
+    snap = codex_snapshot(
+        cwd=payload.get("cwd"),
+        rollout_path=payload.get("transcript_path") or None,
+    )
+    if snap.get("model") in ("", "?") and payload.get("model"):
+        snap["model"] = payload["model"]
+    return render_snapshot(snap)
+
+
+def hook_main() -> None:
+    """Codex Stop hook: print the bar into the response area after each turn.
+
+    Codex has no command-backed statusline, but a Stop hook may return a
+    `systemMessage`, which the TUI prints and the model never sees. It is not
+    the bottom bar — it is the closest thing Codex offers to one.
+
+    Anything that goes wrong here must stay invisible: a hook that fails or
+    stalls is a hook that gets in the way of the session it decorates.
+    """
+    import json as _json
+    import sys as _sys
+
+    try:
+        raw = _sys.stdin.read()
+        payload = _json.loads(raw) if raw.strip() else {}
+    except Exception:
+        payload = {}
+
+    try:
+        line = hook_line(payload)
+    except Exception:
+        _sys.exit(0)
+
+    if line:
+        _json.dump({"systemMessage": line}, _sys.stdout)
+    _sys.exit(0)

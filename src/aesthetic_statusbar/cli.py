@@ -256,6 +256,113 @@ def tmux_line() -> str:
     return f'set -g status-left "#({CODEX_COMMAND} --tmux)"'
 
 
+HOOK_COMMAND = f"{CODEX_COMMAND} --hook"
+CODEX_HOOK_EVENTS = (
+    "PreToolUse",
+    "PermissionRequest",
+    "PostToolUse",
+    "PreCompact",
+    "PostCompact",
+    "SessionStart",
+    "SessionEnd",
+    "UserPromptSubmit",
+    "SubagentStart",
+    "SubagentStop",
+    "Stop",
+    "Interrupt",
+)
+
+
+def codex_home() -> Path:
+    return Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
+
+
+def codex_hooks_file() -> Path:
+    return codex_home() / "hooks.json"
+
+
+def read_codex_hooks() -> dict:
+    """Load hooks.json, folding stray event tables into the shape Codex wants.
+
+    Codex only accepts "description" and "hooks" at the top level; an event
+    name sitting at the root makes it reject the whole file, so anything that
+    looks like one is moved inside "hooks" rather than left to break the config.
+    """
+    path = codex_hooks_file()
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        data = {}
+    if not isinstance(data, dict):
+        data = {}
+    if not isinstance(data.get("hooks"), dict):
+        data["hooks"] = {}
+    for event in [k for k in data if k in CODEX_HOOK_EVENTS]:
+        data["hooks"].setdefault(event, data.pop(event))
+    return data
+
+
+# SessionStart puts the bar on screen the moment Codex opens; Stop refreshes it
+# after every turn. Both are the events whose output Codex prints for the user
+# rather than feeding to the model.
+HOOK_EVENTS = ("SessionStart", "Stop")
+
+
+def write_codex_hook():
+    """Register the hooks that print the bar inside Codex."""
+    data = read_codex_hooks()
+
+    for event in HOOK_EVENTS:
+        entries = data["hooks"].setdefault(event, [])
+        already = any(
+            handler.get("command") == HOOK_COMMAND
+            for entry in entries
+            for handler in entry.get("hooks", [])
+        )
+        if not already:
+            entries.append({"hooks": [{"type": "command", "command": HOOK_COMMAND, "timeout": 5}]})
+
+    path = codex_hooks_file()
+    wanted = json.dumps(data, indent=2) + "\n"
+    try:
+        if path.read_text(encoding="utf-8") == wanted:
+            print(f"{path} already runs the bar")
+            return
+    except OSError:
+        pass
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(wanted, encoding="utf-8")
+    print(f"Registered the bar hooks ({', '.join(HOOK_EVENTS)}) in {path}")
+    print("  Codex asks to trust a changed hook config the first time you start it.")
+
+
+def remove_codex_hook():
+    data = read_codex_hooks()
+    changed = False
+
+    for event in list(data["hooks"]):
+        kept = []
+        for entry in data["hooks"][event]:
+            handlers = [h for h in entry.get("hooks", []) if h.get("command") != HOOK_COMMAND]
+            if handlers != entry.get("hooks", []):
+                changed = True
+            if handlers:
+                entry["hooks"] = handlers
+                kept.append(entry)
+        if kept:
+            data["hooks"][event] = kept
+        else:
+            data["hooks"].pop(event)
+
+    if not changed:
+        print(f"No bar hooks found in {codex_hooks_file()}")
+        return
+
+    codex_hooks_file().write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    print(f"Removed the bar hooks from {codex_hooks_file()}")
+
+
 TMUX_SESSION_CONF = Path.home() / ".config" / "aesthetic-statusbar" / "codex.tmux.conf"
 
 WARP_DIR = Path.home() / ".warp"
@@ -402,14 +509,15 @@ def cmd_codex_install():
     if not shutil.which(CODEX_COMMAND):
         print(f"Warning: '{CODEX_COMMAND}' not found in PATH. Install the package via pipx/pip first.")
 
-    codex_home = Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
-    if not codex_home.exists():
-        print(f"Warning: no Codex home at {codex_home}. The bar will have nothing to read.")
+    home = codex_home()
+    if not home.exists():
+        print(f"Warning: no Codex home at {home}. The bar will have nothing to read.")
 
-    print("Codex has no statusline hook, so the bar is drawn outside its TUI:")
-    print("  - inside tmux, on the status line")
-    print("  - in Warp, in a split pane below Codex")
-    print("  - anywhere else, in the terminal's title bar while codex runs")
+    print("Codex has no command-backed statusline, so the bar goes in two places:")
+    print("  - after every turn, printed by a Stop hook (inside Codex, in colour)")
+    print("  - pinned, on a tmux status line / Warp pane / the terminal title")
+
+    write_codex_hook()
 
     if shutil.which("tmux"):
         write_tmux_session_conf()
@@ -480,6 +588,7 @@ def write_tmux_config():
 
 
 def cmd_codex_uninstall():
+    remove_codex_hook()
     remove_shell_function()
     remove_warp_config()
     remove_tmux_session_conf()

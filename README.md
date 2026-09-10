@@ -247,14 +247,21 @@ curl -fsSL https://raw.githubusercontent.com/SrGexj/aesthetic-statusbar-cc/main/
 
 ## OpenAI Codex CLI
 
-The same bar works with Codex, but not inside its TUI: Codex's `/statusline`
-only picks from a fixed list of built-in items, and there is no hook to hand it
-a command. What it does write is a rollout file per session
-(`~/.codex/sessions/**/rollout-*.jsonl`) carrying the same numbers Claude Code
+The same bar works with Codex, but not on its own status line: `/statusline`
+only picks from a fixed list of built-in items (`model-with-reasoning`,
+`context-remaining`, `five-hour-limit`, …), and there is no hook to hand it a
+command the way `statusLine` does in Claude Code.
+
+Two things follow from that. The bar is **printed inside Codex** by a hook —
+`SessionStart` and `Stop` may return a `systemMessage`, which Codex shows to
+you and never sends to the model — and it is **pinned outside Codex** on a
+surface Codex does not draw. The hook lives in `~/.codex/hooks.json`; Codex
+asks you to trust a changed hook config the first time you start it, under
+`/hooks`. Either way the numbers come from the same place: Codex writes a rollout file
+per session (`~/.codex/sessions/**/rollout-*.jsonl`) carrying what Claude Code
 sends over stdin — token usage, context window, rate limits, cached input
-tokens. The Codex adapter reads the rollout of the session running in the
-current directory and renders the bar somewhere else, usually the tmux status
-line.
+tokens. A hook payload names its own rollout; outside a hook, the adapter picks
+the session running in the current directory.
 
 ```bash
 aesthetic-statusbar codex install
