@@ -267,7 +267,8 @@ tokens. A hook payload names its own rollout; outside a hook, the adapter picks
 the session running in the current directory.
 
 ```bash
-aesthetic-statusbar codex install
+aesthetic-statusbar codex install             # hook + a pinned surface
+aesthetic-statusbar codex install --hook-only # just the hook
 ```
 
 From then on the bar comes up on its own with every `codex`, on whichever

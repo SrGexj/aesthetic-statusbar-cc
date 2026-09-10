@@ -235,7 +235,7 @@ def cmd_codex(args):
 
         pane_loop() if args.pane else title_loop()
     elif args.codex_action == "install":
-        cmd_codex_install()
+        cmd_codex_install(hook_only=args.hook_only)
     elif args.codex_action == "uninstall":
         cmd_codex_uninstall()
 
@@ -503,7 +503,7 @@ def shell_function() -> str:
     )
 
 
-def cmd_codex_install():
+def cmd_codex_install(hook_only: bool = False):
     init_config()
 
     if not shutil.which(CODEX_COMMAND):
@@ -514,10 +514,14 @@ def cmd_codex_install():
         print(f"Warning: no Codex home at {home}. The bar will have nothing to read.")
 
     print("Codex has no command-backed statusline, so the bar goes in two places:")
-    print("  - after every turn, printed by a Stop hook (inside Codex, in colour)")
+    print("  - when a session opens and after every turn, printed by a hook")
     print("  - pinned, on a tmux status line / Warp pane / the terminal title")
 
     write_codex_hook()
+
+    if hook_only:
+        print("\nHook only — nothing pinned, nothing wrapped.")
+        return
 
     if shutil.which("tmux"):
         write_tmux_session_conf()
@@ -659,6 +663,12 @@ def main():
         "--tmux",
         action="store_true",
         help="With 'run', emit tmux markup instead of ANSI",
+    )
+    p_codex.add_argument(
+        "--hook-only",
+        action="store_true",
+        dest="hook_only",
+        help="With 'install', register the hook and leave tmux, Warp and the shell alone",
     )
     p_codex.add_argument(
         "--pane",
