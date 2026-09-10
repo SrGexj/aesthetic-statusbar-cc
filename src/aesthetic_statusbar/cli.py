@@ -24,6 +24,8 @@ STATUSBAR_COMMAND = "aesthetic-statusbar-run"
 CODEX_COMMAND = "aesthetic-statusbar-codex"
 TMUX_CONF = Path.home() / ".tmux.conf"
 TMUX_MARKER = "# aesthetic-statusbar (codex)"
+SHELL_MARKER = "# >>> aesthetic-statusbar (codex) >>>"
+SHELL_END = "# <<< aesthetic-statusbar (codex) <<<"
 
 
 def cmd_init(args):
@@ -228,8 +230,12 @@ def cmd_run(args):
 def cmd_codex(args):
     if args.codex_action == "run":
         cmd_codex_run(as_tmux=args.tmux)
+    elif args.codex_action == "watch":
+        from aesthetic_statusbar.watch import title_loop
+
+        title_loop()
     elif args.codex_action == "install":
-        cmd_codex_install(tmux=args.tmux)
+        cmd_codex_install()
     elif args.codex_action == "uninstall":
         cmd_codex_uninstall()
 
@@ -250,7 +256,44 @@ def tmux_line() -> str:
     return f'set -g status-right "#({CODEX_COMMAND} --tmux)"'
 
 
-def cmd_codex_install(tmux: bool = False):
+def shell_rc() -> Path:
+    shell = os.path.basename(os.environ.get("SHELL", "")) or "zsh"
+    if shell == "bash":
+        return Path.home() / ".bashrc"
+    return Path.home() / ".zshrc"
+
+
+def shell_function() -> str:
+    """Wrap `codex` so the bar comes up with it and dies with it.
+
+    Inside tmux the status line already carries the bar, so the wrapper only
+    starts the title watcher when there is no tmux to draw into.
+    """
+    return "\n".join(
+        [
+            SHELL_MARKER,
+            "codex() {",
+            '  if [ -n "$TMUX" ]; then',
+            '    command codex "$@"',
+            "    return",
+            "  fi",
+            f"  {CODEX_COMMAND} --watch &",
+            "  local __statusbar_pid=$!",
+            # Disowned, so the shell does not print job-control noise when the
+            # watcher is killed at the end of the session.
+            "  disown 2>/dev/null || true",
+            '  command codex "$@"',
+            "  local __statusbar_status=$?",
+            '  kill "$__statusbar_pid" 2>/dev/null || true',
+            "  return $__statusbar_status",
+            "}",
+            SHELL_END,
+            "",
+        ]
+    )
+
+
+def cmd_codex_install():
     init_config()
 
     if not shutil.which(CODEX_COMMAND):
@@ -260,18 +303,50 @@ def cmd_codex_install(tmux: bool = False):
     if not codex_home.exists():
         print(f"Warning: no Codex home at {codex_home}. The bar will have nothing to read.")
 
-    print("Codex has no statusline command hook, so the bar renders outside its TUI.")
-    print(f"Print it once:  {CODEX_COMMAND}")
-    print("\ntmux — add to ~/.tmux.conf:")
-    print(f"  {TMUX_MARKER}")
-    print(f"  {tmux_line()}")
-    print("  set -g status-interval 5")
-    print("  set -g status-right-length 200")
+    print("Codex has no statusline hook, so the bar is drawn outside its TUI:")
+    print("  - inside tmux, on the status line")
+    print("  - outside tmux, in the terminal's title bar while codex runs")
 
-    if tmux:
+    if shutil.which("tmux"):
         write_tmux_config()
     else:
-        print("\nRe-run with --tmux to append those lines automatically.")
+        print("\ntmux not installed — skipping the tmux status line.")
+
+    write_shell_function()
+
+    print(f"\nOpen a new shell (or: source {shell_rc()}) and run codex as usual.")
+    print("If Codex overwrites the title, turn its own off with /terminal-title inside Codex.")
+
+
+def write_shell_function():
+    rc = shell_rc()
+    existing = rc.read_text(encoding="utf-8") if rc.exists() else ""
+    if SHELL_MARKER in existing:
+        print(f"{rc} already wraps codex")
+        return
+
+    sep = "" if existing.endswith("\n") or not existing else "\n"
+    rc.write_text(f"{existing}{sep}\n{shell_function()}", encoding="utf-8")
+    print(f"Wrapped the codex command in {rc}")
+
+
+def remove_shell_function():
+    rc = shell_rc()
+    if not rc.exists():
+        print(f"No {rc} to clean")
+        return
+
+    lines = rc.read_text(encoding="utf-8").splitlines()
+    if SHELL_MARKER not in lines or SHELL_END not in lines:
+        print(f"No codex wrapper found in {rc}")
+        return
+
+    start = lines.index(SHELL_MARKER)
+    end = lines.index(SHELL_END, start) + 1
+    del lines[start:end]
+
+    rc.write_text("\n".join(lines).rstrip("\n") + "\n", encoding="utf-8")
+    print(f"Removed the codex wrapper from {rc}")
 
 
 def write_tmux_config():
@@ -297,6 +372,11 @@ def write_tmux_config():
 
 
 def cmd_codex_uninstall():
+    remove_shell_function()
+    remove_tmux_config()
+
+
+def remove_tmux_config():
     if not TMUX_CONF.exists():
         print(f"No {TMUX_CONF} to clean")
         return
@@ -353,13 +433,13 @@ def main():
     p_codex = sub.add_parser("codex", help="Use the bar with OpenAI Codex CLI")
     p_codex.add_argument(
         "codex_action",
-        choices=["run", "install", "uninstall"],
-        help="Render the bar, or set up / remove the tmux integration",
+        choices=["run", "watch", "install", "uninstall"],
+        help="Print the bar once, keep it in the terminal title, or set it up / remove it",
     )
     p_codex.add_argument(
         "--tmux",
         action="store_true",
-        help="With 'run', emit tmux markup; with 'install', write the block to ~/.tmux.conf",
+        help="With 'run', emit tmux markup instead of ANSI",
     )
     p_codex.set_defaults(func=cmd_codex)
 

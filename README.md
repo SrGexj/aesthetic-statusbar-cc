@@ -257,26 +257,37 @@ current directory and renders the bar somewhere else, usually the tmux status
 line.
 
 ```bash
-# Print the bar once
-aesthetic-statusbar codex run
-
-# Print the tmux setup, or write it to ~/.tmux.conf
 aesthetic-statusbar codex install
-aesthetic-statusbar codex install --tmux
 ```
 
-The tmux block it writes:
+From then on the bar comes up on its own with every `codex`, on whichever
+surface is available:
 
-```tmux
-# aesthetic-statusbar (codex)
-set -g status-right "#(aesthetic-statusbar-codex --tmux)"
-set -g status-interval 5
-set -g status-right-length 200
+- **Inside tmux** — the status line. The installer appends to `~/.tmux.conf`:
+
+  ```tmux
+  # aesthetic-statusbar (codex)
+  set -g status-right "#(aesthetic-statusbar-codex --tmux)"
+  set -g status-interval 5
+  set -g status-right-length 200
+  ```
+
+  `--tmux` rewrites the ANSI colours as tmux styles, because tmux strips raw
+  escape sequences coming out of `#(command)`.
+
+- **Outside tmux** — the terminal's title bar. The installer wraps the `codex`
+  command in `~/.zshrc` (or `~/.bashrc`) so a watcher paints the title while
+  Codex runs and stops when it exits. Titles carry no colour, so the bars are
+  drawn with block characters instead. If Codex fights over the title, turn its
+  own off with `/terminal-title` inside Codex.
+
+Both blocks are delimited by markers, and `aesthetic-statusbar codex uninstall`
+takes them out again. To see the bar without installing anything:
+
+```bash
+aesthetic-statusbar codex run     # print it once
+aesthetic-statusbar codex watch   # keep it in the terminal title
 ```
-
-`--tmux` rewrites the ANSI colours as tmux styles, because tmux strips raw
-escape sequences that come out of `#(command)`. Remove the block again with
-`aesthetic-statusbar codex uninstall`.
 
 Differences against the Claude Code bar:
 

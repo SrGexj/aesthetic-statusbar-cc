@@ -9,7 +9,7 @@ from .colors import (
     enable_unicode_output,
 )
 from .pets import get_pet_frame
-from .bars import progress_bar
+from .bars import progress_bar, text_bar
 from .formatters import format_reset, fmt_tokens, cache_cause_label
 from .data import claude_snapshot, get_git_info
 from .config import load_config
@@ -41,9 +41,10 @@ def render_cache(cache: dict, pal: dict) -> str:
     return head
 
 
-def render_snapshot(snap: dict) -> str:
+def render_snapshot(snap: dict, text_bars: bool = False) -> str:
     """Paint a snapshot. The agent it came from (Claude Code, Codex) is irrelevant here."""
     cfg = load_config()
+    draw_bar = (lambda pct: text_bar(pct, width=cfg["bar_width"])) if text_bars else None
     pal = get_palette(cfg["palette"])
 
     pet_frame = get_pet_frame(cfg["pet"]) if cfg["show"].get("pet", True) and cfg["pet"] != "none" else ""
@@ -63,13 +64,13 @@ def render_snapshot(snap: dict) -> str:
         segments["pet"] = f"{pal['cyan']}{pet_frame}{RESET}"
 
     if cfg["show"].get("5h_bar", True) and rate.get("pct_5h") is not None:
-        bar = progress_bar(rate["pct_5h"], pal, width=cfg["bar_width"])
+        bar = draw_bar(rate["pct_5h"]) if draw_bar else progress_bar(rate["pct_5h"], pal, width=cfg["bar_width"])
         reset_str = format_reset(rate["reset_5h"]) if cfg["show"].get("reset_timer", True) else ""
         reset_fmt = f" {pal['white_dim']}{reset_str}{RESET}" if reset_str else ""
         segments["5h_bar"] = f"{rate.get('label_5h', '5h')} {bar}{reset_fmt}"
 
     if cfg["show"].get("7d_bar", True) and rate.get("pct_7d") is not None:
-        bar = progress_bar(rate["pct_7d"], pal, width=cfg["bar_width"])
+        bar = draw_bar(rate["pct_7d"]) if draw_bar else progress_bar(rate["pct_7d"], pal, width=cfg["bar_width"])
         reset_str = format_reset(rate["reset_7d"]) if cfg["show"].get("reset_timer", True) else ""
         reset_fmt = f" {pal['white_dim']}{reset_str}{RESET}" if reset_str else ""
         segments["7d_bar"] = f"{rate.get('label_7d', '7d')} {bar}{reset_fmt}"
@@ -112,8 +113,16 @@ def codex_main():
     from .codex import codex_snapshot
 
     enable_unicode_output()
+    args = sys.argv[1:]
+
+    if "--watch" in args:
+        from .watch import title_loop
+
+        title_loop()
+        return
+
     line = render_snapshot(codex_snapshot())
-    if "--tmux" in sys.argv[1:]:
+    if "--tmux" in args:
         from .tmux import ansi_to_tmux
 
         line = ansi_to_tmux(line)

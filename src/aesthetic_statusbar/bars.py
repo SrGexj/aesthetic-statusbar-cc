@@ -3,6 +3,12 @@
 from .colors import RESET, bg_color_for_pct
 
 
+def text_bar(pct: float, width: int = 14) -> str:
+    """Colourless bar for surfaces that drop ANSI, such as a terminal title."""
+    filled = int(round(pct / 100 * width))
+    return f"{'█' * filled}{'░' * (width - filled)} {pct:.0f}%"
+
+
 def progress_bar(pct: float, pal: dict, width: int = 14) -> str:
     bg_fill = bg_color_for_pct(pct, pal)
     white = pal["white_fg"]
