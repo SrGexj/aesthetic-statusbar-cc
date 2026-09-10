@@ -253,11 +253,58 @@ def cmd_codex_run(as_tmux: bool = False):
 
 
 def tmux_line() -> str:
-    return f'set -g status-right "#({CODEX_COMMAND} --tmux)"'
+    return f'set -g status-left "#({CODEX_COMMAND} --tmux)"'
 
+
+TMUX_SESSION_CONF = Path.home() / ".config" / "aesthetic-statusbar" / "codex.tmux.conf"
 
 WARP_DIR = Path.home() / ".warp"
 WARP_CONFIG = WARP_DIR / "launch_configurations" / "codex-statusbar.yaml"
+
+
+def tmux_session_conf() -> str:
+    """A tmux config for one purpose: hold the bar under a Codex session.
+
+    Everything tmux normally puts on the status line is turned off, so what is
+    left looks like a status bar belonging to Codex rather than a multiplexer
+    someone wrapped around it.
+    """
+    return "\n".join(
+        [
+            "# Written by aesthetic-statusbar — used only by the codex wrapper.",
+            'set -g default-terminal "tmux-256color"',
+            'set -ga terminal-overrides ",*256col*:Tc"',
+            "set -g status on",
+            "set -g status-position bottom",
+            "set -g status-style bg=default",
+            # Left, like Claude Code's own status line — and left-aligned text
+            # is clipped from the right, so the pet and the bars survive a
+            # narrow window while the tail segments go first.
+            f'set -g status-left "#({CODEX_COMMAND} --tmux)"',
+            "set -g status-left-length 400",
+            'set -g status-right ""',
+            "set -g status-right-length 0",
+            'set -g window-status-format ""',
+            'set -g window-status-current-format ""',
+            "set -g status-interval 5",
+            "set -g mouse on",
+            "set -g escape-time 0",
+            "set -g history-limit 50000",
+            "",
+        ]
+    )
+
+
+def write_tmux_session_conf():
+    TMUX_SESSION_CONF.parent.mkdir(parents=True, exist_ok=True)
+    TMUX_SESSION_CONF.write_text(tmux_session_conf(), encoding="utf-8")
+    print(f"Wrote the codex tmux config to {TMUX_SESSION_CONF}")
+
+
+def remove_tmux_session_conf():
+    if TMUX_SESSION_CONF.exists():
+        TMUX_SESSION_CONF.unlink()
+        print(f"Removed {TMUX_SESSION_CONF}")
 
 
 def warp_launch_config(cwd: str) -> str:
@@ -309,17 +356,27 @@ def shell_rc() -> Path:
 
 
 def shell_function() -> str:
-    """Wrap `codex` so the bar comes up with it and dies with it.
+    """Wrap `codex` so the bar is simply there, the way it is under Claude Code.
 
-    The title watcher is the last resort. tmux already carries the bar on its
-    status line, and Warp paints its own title at the top of the window, where
-    a status bar is worse than useless — there the bar belongs in a pane.
+    With tmux around, Codex runs inside a throwaway session whose only piece of
+    chrome is the bar, pinned to the bottom of the window. Without tmux there is
+    nowhere to pin anything, so the terminal title is the fallback — except in
+    Warp, which paints its own title at the top of the window and would put the
+    bar in the last place anyone looks.
     """
     return "\n".join(
         [
             SHELL_MARKER,
             "codex() {",
-            '  if [ -n "$TMUX" ] || [ "$TERM_PROGRAM" = "WarpTerminal" ]; then',
+            '  if [ -n "$TMUX" ]; then',
+            '    command codex "$@"',
+            "    return",
+            "  fi",
+            "  if command -v tmux > /dev/null 2>&1; then",
+            f'    tmux -f "{TMUX_SESSION_CONF}" new-session -- codex "$@"',
+            "    return $?",
+            "  fi",
+            '  if [ "$TERM_PROGRAM" = "WarpTerminal" ]; then',
             '    command codex "$@"',
             "    return",
             "  fi",
@@ -355,9 +412,10 @@ def cmd_codex_install():
     print("  - anywhere else, in the terminal's title bar while codex runs")
 
     if shutil.which("tmux"):
+        write_tmux_session_conf()
         write_tmux_config()
     else:
-        print("\ntmux not installed — skipping the tmux status line.")
+        print("\ntmux not installed — codex will fall back to the terminal title.")
 
     if WARP_DIR.exists():
         write_warp_config()
@@ -404,8 +462,8 @@ def write_tmux_config():
         [
             TMUX_MARKER,
             tmux_line(),
+            "set -g status-left-length 400",
             "set -g status-interval 5",
-            "set -g status-right-length 200",
             "",
         ]
     )
@@ -424,6 +482,7 @@ def write_tmux_config():
 def cmd_codex_uninstall():
     remove_shell_function()
     remove_warp_config()
+    remove_tmux_session_conf()
     remove_tmux_config()
 
 

@@ -44,11 +44,33 @@ class TestShellFunction(RcCase):
         self.assertIn('command codex "$@"', fn)
         self.assertIn(f"{cli.CODEX_COMMAND} --watch &", fn)
 
-    def test_tmux_and_warp_skip_the_title_watcher(self):
-        # Both draw the bar somewhere better: a status line, and a pane.
-        guard = cli.shell_function().splitlines()[2]
-        self.assertIn('[ -n "$TMUX" ]', guard)
-        self.assertIn('"$TERM_PROGRAM" = "WarpTerminal"', guard)
+    def test_an_existing_tmux_session_is_left_alone(self):
+        self.assertIn('if [ -n "$TMUX" ]; then', cli.shell_function())
+
+    def test_tmux_runs_codex_under_the_bar_config(self):
+        fn = cli.shell_function()
+        self.assertIn("command -v tmux", fn)
+        self.assertIn(f'tmux -f "{cli.TMUX_SESSION_CONF}" new-session -- codex "$@"', fn)
+
+    def test_warp_gets_no_title_watcher(self):
+        # Warp paints its own title at the top of the window.
+        fn = cli.shell_function()
+        warp = fn.index('"$TERM_PROGRAM" = "WarpTerminal"')
+        watcher = fn.index(f"{cli.CODEX_COMMAND} --watch")
+        self.assertLess(warp, watcher)
+
+
+class TestTmuxSessionConf(unittest.TestCase):
+    def test_carries_the_bar_on_the_left(self):
+        conf = cli.tmux_session_conf()
+        self.assertIn(f'set -g status-left "#({cli.CODEX_COMMAND} --tmux)"', conf)
+        self.assertIn('set -g status-right ""', conf)
+
+    def test_hides_every_other_piece_of_tmux_chrome(self):
+        conf = cli.tmux_session_conf()
+        self.assertIn('set -g window-status-format ""', conf)
+        self.assertIn('set -g window-status-current-format ""', conf)
+        self.assertIn("set -g status-position bottom", conf)
 
     def test_write_then_remove_leaves_the_file_as_it_was(self):
         self.rc.write_text("export EDITOR=vim\n", encoding="utf-8")
@@ -66,6 +88,19 @@ class TestShellFunction(RcCase):
         self.rc.write_text("alias ll='ls -l'\n", encoding="utf-8")
         cli.remove_shell_function()
         self.assertEqual(self.rc.read_text(encoding="utf-8"), "alias ll='ls -l'\n")
+
+
+class TestTmuxSessionConf(unittest.TestCase):
+    def test_carries_the_bar_on_the_left(self):
+        conf = cli.tmux_session_conf()
+        self.assertIn(f'set -g status-left "#({cli.CODEX_COMMAND} --tmux)"', conf)
+        self.assertIn('set -g status-right ""', conf)
+
+    def test_hides_every_other_piece_of_tmux_chrome(self):
+        conf = cli.tmux_session_conf()
+        self.assertIn('set -g window-status-format ""', conf)
+        self.assertIn('set -g window-status-current-format ""', conf)
+        self.assertIn("set -g status-position bottom", conf)
 
 
 class TestTmuxBlock(unittest.TestCase):

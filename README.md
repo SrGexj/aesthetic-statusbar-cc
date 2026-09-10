@@ -263,15 +263,13 @@ aesthetic-statusbar codex install
 From then on the bar comes up on its own with every `codex`, on whichever
 surface is available:
 
-- **Inside tmux** — the status line. The installer appends to `~/.tmux.conf`:
+- **With tmux installed** — the installer wraps the `codex` command in
+  `~/.zshrc` (or `~/.bashrc`) so it runs inside a throwaway tmux session whose
+  only chrome is the bar, pinned to the bottom. Type `codex`, get the bar, the
+  way Claude Code does it. The session dies with Codex.
 
-  ```tmux
-  # aesthetic-statusbar (codex)
-  set -g status-right "#(aesthetic-statusbar-codex --tmux)"
-  set -g status-interval 5
-  set -g status-right-length 200
-  ```
-
+  Its config lives in `~/.config/aesthetic-statusbar/codex.tmux.conf`, and
+  `~/.tmux.conf` gets the same status line for sessions you started yourself.
   `--tmux` rewrites the ANSI colours as tmux styles, because tmux strips raw
   escape sequences coming out of `#(command)`.
 
