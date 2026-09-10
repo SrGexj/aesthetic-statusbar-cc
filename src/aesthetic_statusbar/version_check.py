@@ -8,6 +8,8 @@ detached child process refreshes it for the next render.
 import json
 import os
 import re
+import shlex
+import shutil
 import subprocess
 import sys
 import time
@@ -20,6 +22,8 @@ CACHE_FILE = Path.home() / ".cache" / "aesthetic-statusbar" / "version_check.jso
 PYPROJECT_URL = (
     "https://raw.githubusercontent.com/SrGexj/aesthetic-statusbar-cc/main/pyproject.toml"
 )
+UPDATE_URL = "https://raw.githubusercontent.com/SrGexj/aesthetic-statusbar-cc/main/update.sh"
+CURL_INSTALL_DIR = Path.home() / ".claude" / "aesthetic-statusbar"
 TTL_SECONDS = 24 * 60 * 60
 FETCH_TIMEOUT = 5
 
@@ -118,6 +122,46 @@ def spawn_refresh() -> None:
         )
     except Exception:
         pass
+
+
+def git_checkout(start: Path) -> Path:
+    """The repo root above `start`, or None when this is not a checkout."""
+    for parent in [start] + list(start.parents):
+        if (parent / ".git").exists() and (parent / "pyproject.toml").exists():
+            return parent
+    return None
+
+
+def update_command() -> str:
+    """The command that actually updates *this* install.
+
+    A curl install has no console script on PATH, so pointing its user at
+    `aesthetic-statusbar` would send them to a command that does not exist.
+    """
+    try:
+        here = Path(__file__).resolve()
+        install_dir = CURL_INSTALL_DIR.resolve()
+        # Path.is_relative_to lands in 3.9; this package still claims 3.8.
+        inside_curl = install_dir == here or install_dir in here.parents
+
+        if not inside_curl:
+            # An editable install runs straight out of a checkout, where
+            # update.sh would overwrite a working tree instead of updating it.
+            checkout = git_checkout(here)
+            if checkout:
+                return f"git -C {shlex.quote(str(checkout))} pull"
+
+        if inside_curl or (install_dir / "run.py").exists():
+            script = install_dir / "update.sh"
+            if script.exists():
+                return f"bash {shlex.quote(str(script))}"
+    except Exception:
+        pass
+
+    if shutil.which("aesthetic-statusbar"):
+        return "aesthetic-statusbar setup update"
+
+    return f"curl -fsSL {UPDATE_URL} | bash"
 
 
 def get_update() -> str:

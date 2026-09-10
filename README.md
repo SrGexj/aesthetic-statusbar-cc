@@ -14,7 +14,7 @@ A customizable, colorful status bar for [Claude Code](https://docs.anthropic.com
 - **Show/hide** — pet, 5h bar, 7d bar, git, model, effort, reset timer, context, prompt cache, update notice
 - **Zero dependencies** — pure Python 3.8+, no pip packages needed
 - **Cache fallback** — shows last known rate limits when stdin is empty
-- **Update notice** — `↑1.2.0` when a new release is out, checked once a day in the background
+- **Update notice** — `↑1.2.0` plus the update command for your install, checked once a day in the background
 
 ## Quick Install (curl)
 
@@ -193,7 +193,7 @@ aesthetic-statusbar list modules     # pet, 5h_bar, 7d_bar, git, model, effort, 
 | `reset_timer` | Time until rate limit resets |
 | `context` | Token usage in model display |
 | `cache` | Prompt cache health: hit ratio, time left before it goes cold, and the likely cause of the last miss |
-| `update` | `↑1.2.0` when a newer release is available (hidden otherwise) |
+| `update` | `↑1.2.0` and the command that updates this install (hidden otherwise) |
 
 ### Prompt cache
 
@@ -220,10 +220,18 @@ is incidental.
 
 ### Update notifications
 
-When a newer release exists, the bar shows `↑1.2.0`. The version is fetched
-from GitHub at most once a day by a detached background process — the render
-path only ever reads `~/.cache/aesthetic-statusbar/version_check.json`, so it
-never waits on the network. Turn it off with:
+When a newer release exists, the bar shows `↑1.2.0` followed by the command
+that updates *this* install — `git -C <repo> pull` when it runs from a
+checkout, `bash ~/.claude/aesthetic-statusbar/update.sh` for a curl install,
+`aesthetic-statusbar setup update` when the console script is on PATH, and the
+`curl … | bash` one-liner otherwise. Nothing updates
+itself: rewriting the modules under a running session is how you get a bar that
+half-reloads, so the command is yours to run.
+
+The version is fetched from GitHub at most once a day by a detached background
+process — the render path only ever reads
+`~/.cache/aesthetic-statusbar/version_check.json`, so it never waits on the
+network. Turn the notice off with:
 
 ```bash
 aesthetic-statusbar set --disable update

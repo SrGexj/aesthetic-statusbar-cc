@@ -22,7 +22,7 @@ from .data import (
     get_cache_data,
 )
 from .config import load_config
-from .version_check import get_update
+from .version_check import get_update, update_command
 
 
 def render_cache(cache: dict, pal: dict) -> str:
@@ -96,7 +96,8 @@ def render() -> str:
         segments["cache"] = render_cache(cache, pal)
 
     if update:
-        segments["update"] = f"{pal['cyan']}\u2191{update}{RESET}"
+        hint = f" {DIM}{update_command()}{RESET}"
+        segments["update"] = f"{pal['cyan']}\u2191{update}{RESET}{hint}"
 
     if cfg["show"].get("effort", True) and effort:
         ec = effort_color(effort, pal)
