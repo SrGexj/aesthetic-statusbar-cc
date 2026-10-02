@@ -5,6 +5,7 @@
   "separator": " │ ",
   "show": {
     "pet": true,
+    "account": true,
     "5h_bar": true,
     "7d_bar": true,
     "git": true,
@@ -15,8 +16,10 @@
     "cache": true,
     "update": true
   },
+  "account_labels": {},
   "order": [
     "pet",
+    "account",
     "5h_bar",
     "7d_bar",
     "git",

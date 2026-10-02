@@ -9,10 +9,67 @@ from pathlib import Path
 
 from .formatters import fmt_tokens, pick_cache_cause
 
-CACHE_FILE = Path.home() / ".cache" / "aesthetic-statusbar" / "last_stdin.json"
+CACHE_DIR = Path.home() / ".cache" / "aesthetic-statusbar"
+# Set by tests to pin the cache to one path; otherwise the file is per account.
+CACHE_FILE = None
 
 
-def read_stdin() -> dict:
+def claude_config_dir() -> Path:
+    """The config dir of the Claude Code that spawned us; each account gets its own."""
+    env = os.environ.get("CLAUDE_CONFIG_DIR")
+    return Path(env).expanduser() if env else Path.home() / ".claude"
+
+
+def get_account() -> dict:
+    """The logged-in account, read from the global config next to this config dir.
+
+    Claude Code keeps it in $CLAUDE_CONFIG_DIR/.claude.json, or ~/.claude.json
+    when the variable is unset.
+    """
+    env = os.environ.get("CLAUDE_CONFIG_DIR")
+    path = Path(env).expanduser() / ".claude.json" if env else Path.home() / ".claude.json"
+    try:
+        acct = json.loads(path.read_text(encoding="utf-8")).get("oauthAccount") or {}
+    except Exception:
+        return {}
+    uuid = acct.get("accountUuid")
+    if not uuid:
+        return {}
+    email = acct.get("emailAddress") or ""
+    return {
+        "uuid": uuid,
+        "email": email,
+        "name": acct.get("displayName") or email.split("@")[0],
+        "slot": account_slot(uuid),
+    }
+
+
+def account_slot(uuid: str) -> int:
+    """Order in which this machine first saw the account, so two accounts never share a tint."""
+    path = CACHE_DIR / "accounts.json"
+    try:
+        seen = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        seen = []
+    if uuid not in seen:
+        seen.append(uuid)
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(seen), encoding="utf-8")
+        except OSError:
+            pass
+    return seen.index(uuid)
+
+
+def cache_file(account: dict) -> Path:
+    """One stdin cache per account, so two accounts open at once never read each other's limits."""
+    if CACHE_FILE is not None:
+        return CACHE_FILE
+    uuid = account.get("uuid")
+    return CACHE_DIR / (f"last_stdin-{uuid[:8]}.json" if uuid else "last_stdin.json")
+
+
+def read_stdin(account: dict) -> dict:
     try:
         if sys.stdin.isatty():
             return {}
@@ -22,8 +79,9 @@ def read_stdin() -> dict:
         data = json.loads(raw)
         if data.get("rate_limits", {}).get("five_hour"):
             try:
-                CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
-                CACHE_FILE.write_text(raw, encoding="utf-8")
+                path = cache_file(account)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(raw, encoding="utf-8")
             except OSError:
                 pass
         return data
@@ -31,20 +89,20 @@ def read_stdin() -> dict:
         return {}
 
 
-def read_cached_stdin() -> dict:
+def read_cached_stdin(account: dict) -> dict:
     try:
-        return json.loads(CACHE_FILE.read_text(encoding="utf-8"))
+        return json.loads(cache_file(account).read_text(encoding="utf-8"))
     except Exception:
         return {}
 
 
-def get_rate_data(stdin_data: dict) -> dict:
+def get_rate_data(stdin_data: dict, account: dict) -> dict:
     rl = stdin_data.get("rate_limits", {})
     fh = rl.get("five_hour", {}) or {}
     sd = rl.get("seven_day", {}) or {}
 
     if not fh and not sd:
-        cached = read_cached_stdin()
+        cached = read_cached_stdin(account)
         cached_rl = cached.get("rate_limits", {})
         fh = cached_rl.get("five_hour", {}) or {}
         sd = cached_rl.get("seven_day", {}) or {}
@@ -59,7 +117,7 @@ def get_rate_data(stdin_data: dict) -> dict:
 
 def read_settings() -> dict:
     try:
-        with open(Path.home() / ".claude" / "settings.json") as f:
+        with open(claude_config_dir() / "settings.json") as f:
             return json.load(f)
     except Exception:
         return {}
@@ -117,21 +175,23 @@ def get_git_info() -> tuple:
 
 def claude_snapshot() -> dict:
     """Everything the renderer needs, read from Claude Code's statusline payload."""
-    stdin_data = read_stdin()
+    account = get_account()
+    stdin_data = read_stdin(account)
     settings = read_settings()
     return {
+        "account": account,
         "model": get_model(stdin_data, settings),
         "ctx_suffix": get_context_suffix(stdin_data),
         "effort": get_effort(stdin_data, settings),
-        "rate": get_rate_data(stdin_data),
-        "cache": get_cache_data(stdin_data),
+        "rate": get_rate_data(stdin_data, account),
+        "cache": get_cache_data(stdin_data, account),
     }
 
 
-def get_cache_data(stdin_data: dict) -> dict:
+def get_cache_data(stdin_data: dict, account: dict = None) -> dict:
     pc = stdin_data.get("prompt_cache") or {}
     if not pc:
-        pc = read_cached_stdin().get("prompt_cache") or {}
+        pc = read_cached_stdin(account or {}).get("prompt_cache") or {}
     if not pc or not pc.get("caching_observed"):
         return {}
 

@@ -15,6 +15,18 @@ from .data import claude_snapshot, get_git_info
 from .config import load_config
 from .version_check import get_update, update_command
 
+# 256-colour codes outside the palette's warning hues, so an account never reads as an alert.
+ACCOUNT_COLORS = (81, 179, 141, 213, 116, 174)
+
+
+def render_account(account: dict, labels: dict) -> str:
+    """Who this terminal is billed to, tinted per account so two side by side tell apart."""
+    name = labels.get(account.get("email", "")) or account.get("name") or ""
+    if not name:
+        return ""
+    code = ACCOUNT_COLORS[account.get("slot", 0) % len(ACCOUNT_COLORS)]
+    return f"\033[38;5;{code}m\u25c6 {name}{RESET}"
+
 
 def render_cache(cache: dict, pal: dict) -> str:
     """Prompt-cache health: hit ratio, time to cold, and why it last missed."""
@@ -66,6 +78,12 @@ def render_snapshot(snap: dict, text_bars: bool = False, hide: tuple = ()) -> st
 
     if pet_frame:
         segments["pet"] = f"{pal['cyan']}{pet_frame}{RESET}"
+
+    account = snap.get("account") if cfg["show"].get("account", True) else None
+    if account:
+        label = render_account(account, cfg["account_labels"])
+        if label:
+            segments["account"] = label
 
     if cfg["show"].get("5h_bar", True) and rate.get("pct_5h") is not None:
         bar = draw_bar(rate["pct_5h"]) if draw_bar else progress_bar(rate["pct_5h"], pal, width=cfg["bar_width"])

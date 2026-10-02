@@ -108,6 +108,7 @@ aesthetic-statusbar init
   "separator": " │ ",
   "show": {
     "pet": true,
+    "account": true,
     "5h_bar": true,
     "7d_bar": true,
     "git": true,
@@ -118,8 +119,20 @@ aesthetic-statusbar init
     "cache": true,
     "update": true
   },
-  "order": ["pet", "5h_bar", "7d_bar", "git", "model", "cache", "effort", "update"]
+  "account_labels": {},
+  "order": ["pet", "account", "5h_bar", "7d_bar", "git", "model", "cache", "effort", "update"]
 }
+```
+
+### Several Claude accounts
+
+Running two accounts side by side (one of them with `CLAUDE_CONFIG_DIR` set) is supported:
+the `account` segment shows which one each terminal is on, tinted per account, and the
+usage bars of one never fall back to the other's cached limits. The name comes from the
+account's display name; give it your own by email:
+
+```json
+"account_labels": { "me@work.com": "work", "me@gmail.com": "personal" }
 ```
 
 ### CLI configuration

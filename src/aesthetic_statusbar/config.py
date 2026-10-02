@@ -13,6 +13,7 @@ DEFAULT_CONFIG = {
     "separator": " │ ",
     "show": {
         "pet": True,
+        "account": True,
         "5h_bar": True,
         "7d_bar": True,
         "git": True,
@@ -23,13 +24,16 @@ DEFAULT_CONFIG = {
         "cache": True,
         "update": True,
     },
-    "order": ["pet", "5h_bar", "7d_bar", "git", "model", "cache", "effort", "update"],
+    # Email -> name shown in the account segment; unset accounts use their display name.
+    "account_labels": {},
+    "order": ["pet", "account", "5h_bar", "7d_bar", "git", "model", "cache", "effort", "update"],
 }
 
 
 def load_config() -> dict:
     cfg = dict(DEFAULT_CONFIG)
     cfg["show"] = dict(DEFAULT_CONFIG["show"])
+    cfg["account_labels"] = {}
     cfg["order"] = list(DEFAULT_CONFIG["order"])
 
     if CONFIG_FILE.exists():
@@ -43,6 +47,8 @@ def load_config() -> dict:
                 cfg["bar_width"] = user["bar_width"]
             if "separator" in user:
                 cfg["separator"] = user["separator"]
+            if isinstance(user.get("account_labels"), dict):
+                cfg["account_labels"] = user["account_labels"]
             if "show" in user:
                 for k, v in user["show"].items():
                     if k in cfg["show"]:
