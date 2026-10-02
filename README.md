@@ -11,9 +11,9 @@ A customizable, colorful status bar for [Claude Code](https://docs.anthropic.com
 - **Animated pet companions** — blob, cat, ghost, robot, sparkle (or disable)
 - **5 color palettes** — default, dracula, nord, solarized, catppuccin
 - **Fully configurable** — toggle any module, change order, adjust bar width
-- **Show/hide** — pet, 5h bar, 7d bar, git, model, effort, reset timer, context, prompt cache, update notice
+- **Show/hide** — pet, account, 5h bar, 7d bar, git, model, effort, reset timer, context, prompt cache, update notice
 - **Zero dependencies** — pure Python 3.8+, no pip packages needed
-- **Cache fallback** — shows last known rate limits when stdin is empty
+- **Cache fallback** — shows last known rate limits when stdin is empty, kept per account
 - **Update notice** — `↑1.2.0` plus the update command for your install, checked once a day in the background
 
 ## Quick Install (curl)
@@ -169,7 +169,7 @@ aesthetic-statusbar reset
 ```bash
 aesthetic-statusbar list palettes    # default, dracula, nord, solarized, catppuccin
 aesthetic-statusbar list pets        # blob, cat, ghost, robot, sparkle, none
-aesthetic-statusbar list modules     # pet, 5h_bar, 7d_bar, git, model, effort, reset_timer, context, cache, update
+aesthetic-statusbar list modules     # pet, account, 5h_bar, 7d_bar, git, model, effort, reset_timer, context, cache, update
 ```
 
 ## Palettes
@@ -198,6 +198,7 @@ aesthetic-statusbar list modules     # pet, 5h_bar, 7d_bar, git, model, effort, 
 | Module | Description |
 |--------|-------------|
 | `pet` | Animated companion |
+| `account` | Claude account this terminal is on, tinted per account (see [Several Claude accounts](#several-claude-accounts)) |
 | `5h_bar` | 5-hour rate limit progress bar |
 | `7d_bar` | 7-day rate limit progress bar |
 | `git` | Current repo and branch |
