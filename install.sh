@@ -34,6 +34,9 @@ MODULES=(
     renderer.py
     version_check.py
     cli.py
+    codex.py
+    tmux.py
+    watch.py
 )
 
 for mod in "${MODULES[@]}"; do
